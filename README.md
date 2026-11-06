@@ -17,7 +17,7 @@ Group 19 roster verified against the course's Groups & Schedules sheet and the T
 | Member | Coordination role | Development responsibility | GitHub username |
 |---|---|---|---|
 | Sezgin Berk Özer | Team member | Full-stack; feature assignment to agree | [@SezginBerkOzer](https://github.com/SezginBerkOzer) |
-| Rayen Tabassi | Jira coordination; confirm formal Scrum Master role | Full-stack; feature assignment to agree | [@Rayen12354333](https://github.com/Rayen12354333) (repo owner) |
+| Rayen Tabassi | Jira coordination; confirm formal Scrum Master role | Full-stack; feature assignment to agree | [@Rayen12354333](https://github.com/Rayen12354333)|
 | Emre Tutal | Team member | Full-stack; feature assignment to agree | [@EmreTutal](https://github.com/EmreTutal) |
 | Naz Üstün | Team member | Full-stack; feature assignment to agree | [@nazustun](https://github.com/nazustun) (invite pending) |
 | Baran Aksoy | Team member | Full-stack; feature assignment to agree | [@BaranSUnet](https://github.com/BaranSUnet) |
