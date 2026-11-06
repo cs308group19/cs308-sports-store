@@ -235,14 +235,6 @@ AI assistance is permitted by the brief, but each member must understand and be 
 
 Installation and run instructions will be added after the applications are scaffolded and their commands are verified. Agree on supported Node.js/PostgreSQL versions, the database access library, environment variables, and package scripts before documenting a runnable setup.
 
-## Team decisions still needed
-
-- Add Yiğit Turan as a GitHub collaborator, make sure Naz accepts the invite, and confirm each member's responsibilities.
-- Confirm NestJS and select the database access library/ORM.
-- Agree on authentication, chat, email/PDF generation, file storage, and deployment.
-- Decide whether initial products need size/color variants and define popularity sorting.
-- Confirm the store name, initial categories, sprint dates, and demo dates.
-
 ## Technical references
 
 - [React documentation](https://react.dev/)
