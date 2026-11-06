@@ -12,16 +12,16 @@ Initial category ideas: **football, basketball, running, and fitness**. The fina
 
 ## Team
 
-Group 19 roster verified against the course's Groups & Schedules sheet and the TA's email. GitHub usernames and individual feature assignments still need confirmation.
+Group 19 roster verified against the course's Groups & Schedules sheet and the TA's email. GitHub usernames match the repository's collaborator list; individual feature assignments still need confirmation.
 
 | Member | Coordination role | Development responsibility | GitHub username |
 |---|---|---|---|
-| Sezgin Berk Özer | Team member | Full-stack; feature assignment to agree | To confirm |
-| Rayen Tabassi | Jira coordination; confirm formal Scrum Master role | Full-stack; feature assignment to agree | To confirm |
-| Emre Tutal | Team member | Full-stack; feature assignment to agree | To confirm |
-| Naz Üstün | Team member | Full-stack; feature assignment to agree | To confirm |
-| Baran Aksoy | Team member | Full-stack; feature assignment to agree | To confirm |
-| Yiğit Turan | Team member | Full-stack; feature assignment to agree | To confirm |
+| Sezgin Berk Özer | Team member | Full-stack; feature assignment to agree | [@SezginBerkOzer](https://github.com/SezginBerkOzer) |
+| Rayen Tabassi | Jira coordination; confirm formal Scrum Master role | Full-stack; feature assignment to agree | [@Rayen12354333](https://github.com/Rayen12354333) (repo owner) |
+| Emre Tutal | Team member | Full-stack; feature assignment to agree | [@EmreTutal](https://github.com/EmreTutal) |
+| Naz Üstün | Team member | Full-stack; feature assignment to agree | [@nazustun](https://github.com/nazustun) (invite pending) |
+| Baran Aksoy | Team member | Full-stack; feature assignment to agree | [@BaranSUnet](https://github.com/BaranSUnet) |
+| Yiğit Turan | Team member | Full-stack; feature assignment to agree | Not added yet |
 
 **Assigned TA:** Saltuk Buğra Çiftçi.
 
@@ -237,7 +237,7 @@ Installation and run instructions will be added after the applications are scaff
 
 ## Team decisions still needed
 
-- Confirm the complete roster, GitHub usernames, and each member's responsibilities.
+- Add Yiğit Turan as a GitHub collaborator, make sure Naz accepts the invite, and confirm each member's responsibilities.
 - Confirm NestJS and select the database access library/ORM.
 - Agree on authentication, chat, email/PDF generation, file storage, and deployment.
 - Decide whether initial products need size/color variants and define popularity sorting.
