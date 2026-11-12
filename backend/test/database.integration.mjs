@@ -8,21 +8,10 @@ import { readFile, readdir } from 'node:fs/promises';
 import { Client } from 'pg';
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from 'jose';
 import request from 'supertest';
+import { validateDatabaseTestTarget } from './database-target.mjs';
 
-const connectionString = process.env.RALLY_DATABASE_TEST_URL;
-assert.ok(
-  connectionString,
-  'Set RALLY_DATABASE_TEST_URL to an EMPTY disposable local PostgreSQL database.',
-);
-const target = new URL(connectionString);
-assert.ok(
-  ['localhost', '127.0.0.1', '[::1]'].includes(target.hostname),
-  'Remote databases are refused.',
-);
-assert.match(
-  target.pathname,
-  /^\/rally_test_[a-z0-9_]+$/,
-  'Database name must start with rally_test_.',
+const connectionString = validateDatabaseTestTarget(
+  process.env.RALLY_DATABASE_TEST_URL,
 );
 const db = new Client({ connectionString });
 const tables = [
