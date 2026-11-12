@@ -38,7 +38,7 @@ export function Footer({ navigate }: { navigate: (v: View) => void }) {
         </div>
       </div>
       <div className="footer-bottom">
-        <span>© 2025 RALLY</span>
+        <span>© {new Date().getFullYear()} RALLY</span>
         <span>Secure checkout · 30-day returns · Athlete support</span>
       </div>
     </footer>
