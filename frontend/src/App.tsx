@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Role, Product, CartLine } from "./types/models";
 import { products } from "./services/mockStore";
 import { type View, roleDefaults, roleNav, staffViews } from "./app/navigation";
-import { type SessionUser } from "./auth/demoAccounts";
+import { useAuth } from "./auth/AuthProvider";
+import type { SessionUser } from "./auth/types";
 import { Footer } from "./components/layout/Footer";
 import { Header } from "./components/layout/Header";
 import { SupportChat } from "./components/layout/SupportChat";
@@ -28,8 +29,8 @@ import { Refunds } from "./pages/sales-manager/Refunds";
 import { SupportDesk } from "./pages/support-agent/SupportDesk";
 
 export default function App() {
-  const [role, setRole] = useState<Role>("Customer");
-  const [user, setUser] = useState<SessionUser | null>(null);
+  const { user, loading, signOut } = useAuth();
+  const role: Role = user?.role ?? "Customer";
   const [view, setView] = useState<View>(window.location.pathname === "/auth" ? "login" : "home");
   const [returnTo, setReturnTo] = useState<View>("home");
   const [authOrigin, setAuthOrigin] = useState<View>("home");
@@ -45,6 +46,19 @@ export default function App() {
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
+
+  // After a page reload, send a signed-in staff member straight to their dashboard.
+  const restoredSession = useRef(false);
+  useEffect(() => {
+    if (loading || restoredSession.current) return;
+    restoredSession.current = true;
+    if (user && user.role !== "Customer") setView(roleDefaults[user.role]);
+  }, [loading, user]);
+
+  // If the session ends while a staff page is open (expired or revoked), leave that page.
+  useEffect(() => {
+    if (!loading && !user && staffViews.has(view)) setView("home");
+  }, [loading, user, view]);
 
   const navigate = (next: View) => {
     if (next === "checkout" && !user) {
@@ -75,17 +89,14 @@ export default function App() {
   };
 
   const finishAuthentication = (account: SessionUser) => {
-    setUser(account);
-    setRole(account.role);
     const destination = account.role === "Customer" ? returnTo : roleDefaults[account.role];
     setView(staffViews.has(destination) && account.role === "Customer" ? "home" : destination);
     window.history.replaceState({}, "", "/");
     notify(`Welcome, ${account.name}`);
   };
 
-  const logout = () => {
-    setUser(null);
-    setRole("Customer");
+  const logout = async () => {
+    await signOut();
     setView("home");
     window.history.pushState({}, "", "/");
     notify("You have been logged out");
@@ -154,6 +165,8 @@ export default function App() {
     if (view === "sales-refunds") return <Refunds notify={notify} />;
     return <SupportDesk notify={notify} />;
   })();
+
+  if (loading) return <div className="app" aria-busy="true" />;
 
   return (
     <div className="app">

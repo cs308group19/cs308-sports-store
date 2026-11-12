@@ -1,7 +1,19 @@
 import { useState, type FormEvent } from "react";
-import { type SessionUser, demoAccounts } from "../../auth/demoAccounts";
+import { demoAccounts } from "../../auth/demoAccounts";
+import { passwordProblem } from "../../auth/passwordPolicy";
+import type { SessionUser } from "../../auth/types";
+import { AccountCreatedError, useAuth } from "../../auth/AuthProvider";
 import { Button } from "../../components/ui/Button";
 import { Icon } from "../../components/ui/Icon";
+import { ApiError } from "../../lib/api";
+
+function describeError(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.status === 409) return "An account with this email already exists.";
+    if (error.status === 429) return "Too many attempts. Please wait a minute and try again.";
+  }
+  return error instanceof Error ? error.message : "Something went wrong. Please try again.";
+}
 
 export function AuthPage({
   onAuthenticated,
@@ -10,63 +22,60 @@ export function AuthPage({
   onAuthenticated: (account: SessionUser) => void;
   onCancel: () => void;
 }) {
+  const { signIn, register } = useAuth();
   const [tab, setTab] = useState<"login" | "signup">("login");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
-  const [staffError, setStaffError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const customerLogin = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    const account = demoAccounts.find(
-      (item) =>
-        item.role === "Customer" &&
-        item.email === String(data.get("email")).trim().toLowerCase() &&
-        item.password === data.get("password"),
-    );
-    if (!account) {
-      setError("Wrong email or password.");
-      return;
-    }
+  const switchTab = (next: "login" | "signup") => {
+    setTab(next);
     setError("");
-    onAuthenticated(account);
   };
 
-  const signup = (event: FormEvent<HTMLFormElement>) => {
+  const login = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    setSubmitting(true);
+    setError("");
+    try {
+      onAuthenticated(await signIn(String(data.get("email")), String(data.get("password"))));
+    } catch (failure) {
+      setError(describeError(failure));
+      setSubmitting(false);
+    }
+  };
+
+  const signup = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     const password = String(data.get("password"));
-    if (password.length < 8 || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
-      setError("Password does not meet the rules below.");
+    const problem = passwordProblem(password);
+    if (problem) {
+      setError(problem);
       return;
     }
     if (password !== data.get("confirmPassword")) {
       setError("Passwords do not match.");
       return;
     }
+    setSubmitting(true);
     setError("");
-    onAuthenticated({
-      name: String(data.get("fullName")),
-      email: String(data.get("email")),
-      role: "Customer",
-    });
-  };
-
-  const staffLogin = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    const account = demoAccounts.find(
-      (item) =>
-        item.role !== "Customer" &&
-        item.email === String(data.get("staffEmail")).trim().toLowerCase() &&
-        item.password === data.get("staffPassword"),
-    );
-    if (!account) {
-      setStaffError("Wrong staff email or password.");
-      return;
+    try {
+      const account = await register({
+        fullName: String(data.get("fullName")),
+        taxId: String(data.get("taxId")),
+        email: String(data.get("email")),
+        homeAddress: String(data.get("address")),
+        password,
+      });
+      onAuthenticated(account);
+    } catch (failure) {
+      // The account exists now, so submitting the signup form again would only answer 409.
+      if (failure instanceof AccountCreatedError) setTab("login");
+      setError(describeError(failure));
+      setSubmitting(false);
     }
-    setStaffError("");
-    onAuthenticated(account);
   };
 
   return (
@@ -91,31 +100,22 @@ export function AuthPage({
           ← Back to store
         </button>
         <div className="auth-tabs" role="tablist" aria-label="Authentication">
-          <button
-            className={tab === "login" ? "active" : ""}
-            onClick={() => {
-              setTab("login");
-              setError("");
-            }}
-          >
+          <button className={tab === "login" ? "active" : ""} onClick={() => switchTab("login")}>
             Log in
           </button>
-          <button
-            className={tab === "signup" ? "active" : ""}
-            onClick={() => {
-              setTab("signup");
-              setError("");
-            }}
-          >
+          <button className={tab === "signup" ? "active" : ""} onClick={() => switchTab("signup")}>
             Sign up
           </button>
         </div>
 
         {tab === "login" ? (
-          <form className="form-card auth-form" onSubmit={customerLogin}>
+          <form className="form-card auth-form" onSubmit={login}>
             <span className="eyebrow">Member access</span>
             <h1>Welcome back</h1>
-            <p>Log in to check out, track orders, and manage your RALLY account.</p>
+            <p>
+              Log in to check out, track orders, and manage your RALLY account. Store team members
+              are taken to their dashboard.
+            </p>
             <label>
               Email
               <input name="email" required type="email" placeholder="you@example.com" />
@@ -139,10 +139,12 @@ export function AuthPage({
               </span>
             </label>
             {error && <div className="auth-error">{error}</div>}
-            <Button type="submit">Log in</Button>
+            <Button type="submit" disabled={submitting}>
+              {submitting ? "Logging in…" : "Log in"}
+            </Button>
             <div className="form-switch">
               New to RALLY?{" "}
-              <button type="button" onClick={() => setTab("signup")}>
+              <button type="button" onClick={() => switchTab("signup")}>
                 Sign up
               </button>
             </div>
@@ -151,14 +153,23 @@ export function AuthPage({
           <form className="form-card auth-form" onSubmit={signup}>
             <span className="eyebrow">Start your journey</span>
             <h1>Create account</h1>
-            <p>Customer accounts are free. Staff accounts are created by the store.</p>
+            <p>
+              Everyone starts as a customer. Store team roles are assigned by an administrator after
+              sign-up.
+            </p>
             <label>
               Full name
-              <input name="fullName" required placeholder="Alex Morgan" />
+              <input name="fullName" required maxLength={120} placeholder="Alex Morgan" />
             </label>
             <label>
               Tax ID
-              <input name="taxId" required placeholder="Tax identification number" />
+              <input
+                name="taxId"
+                required
+                minLength={5}
+                maxLength={32}
+                placeholder="Tax identification number"
+              />
             </label>
             <label>
               Email
@@ -166,7 +177,13 @@ export function AuthPage({
             </label>
             <label>
               Home address
-              <textarea name="address" required placeholder="Street, city, postal code" />
+              <textarea
+                name="address"
+                required
+                minLength={5}
+                maxLength={500}
+                placeholder="Street, city, postal code"
+              />
             </label>
             <label>
               Password
@@ -187,7 +204,8 @@ export function AuthPage({
               </span>
             </label>
             <small className="password-hint">
-              Use 8+ characters with at least one uppercase letter and one number.
+              Use 8+ characters with at least one lowercase letter, one uppercase letter and one
+              number.
             </small>
             <label>
               Confirm password
@@ -199,38 +217,25 @@ export function AuthPage({
               />
             </label>
             {error && <div className="auth-error">{error}</div>}
-            <Button type="submit">Create account</Button>
+            <Button type="submit" disabled={submitting}>
+              {submitting ? "Creating account…" : "Create account"}
+            </Button>
             <div className="form-switch">
               Already have an account?{" "}
-              <button type="button" onClick={() => setTab("login")}>
+              <button type="button" onClick={() => switchTab("login")}>
                 Log in
               </button>
             </div>
           </form>
         )}
 
-        <div className="staff-login">
-          <div>
-            <span className="eyebrow">Store team</span>
-            <h3>Staff login</h3>
-            <p>Product, sales, and support accounts are issued by RALLY.</p>
-          </div>
-          <form onSubmit={staffLogin}>
-            <input name="staffEmail" required type="email" placeholder="Staff email" />
-            <input name="staffPassword" required type="password" placeholder="Password" />
-            <Button variant="dark" type="submit">
-              Open dashboard
-            </Button>
-          </form>
-          {staffError && <div className="auth-error">{staffError}</div>}
-        </div>
-
         <div className="demo-accounts">
           <b>Demo accounts</b>
-          <span>Customer: jamie@rally.store / rally123</span>
-          <span>Product: product@rally.store / staff123</span>
-          <span>Sales: sales@rally.store / staff123</span>
-          <span>Support: support@rally.store / staff123</span>
+          {demoAccounts.map((account) => (
+            <span key={account.email}>
+              {account.role}: {account.email} / {account.password}
+            </span>
+          ))}
         </div>
       </div>
     </div>
