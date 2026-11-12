@@ -7,5 +7,9 @@ export default defineConfig({
   resolve: {
     alias: { "@": path.resolve(import.meta.dirname, "./src") },
   },
-  server: { port: 5173 },
+  server: {
+    port: 5173,
+    // The backend runs on :3000 (see backend/.env). Same-origin calls avoid CORS in development.
+    proxy: { "/api": "http://localhost:3000" },
+  },
 });
