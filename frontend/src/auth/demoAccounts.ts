@@ -1,29 +1,12 @@
 import type { Role } from "../types/models";
 
-export interface SessionUser {
-  name: string;
-  email: string;
-  role: Role;
-}
-
-export const demoAccounts: Array<SessionUser & { password: string }> = [
-  { name: "Jamie Taylor", email: "jamie@rally.store", password: "rally123", role: "Customer" },
-  {
-    name: "Priya Product",
-    email: "product@rally.store",
-    password: "staff123",
-    role: "Product Manager",
-  },
-  {
-    name: "Sam Sales",
-    email: "sales@rally.store",
-    password: "staff123",
-    role: "Sales Manager",
-  },
-  {
-    name: "Alex Support",
-    email: "support@rally.store",
-    password: "staff123",
-    role: "Support Agent",
-  },
+/**
+ * Display-only list for the login page. The accounts themselves live in Supabase
+ * (created by `npm run seed:demo` in the backend); nothing here is used to authenticate.
+ */
+export const demoAccounts: Array<{ role: Role; email: string; password: string }> = [
+  { role: "Customer", email: "jamie@rally.store", password: "Rally1234" },
+  { role: "Product Manager", email: "product@rally.store", password: "Staff1234" },
+  { role: "Sales Manager", email: "sales@rally.store", password: "Staff1234" },
+  { role: "Support Agent", email: "support@rally.store", password: "Staff1234" },
 ];

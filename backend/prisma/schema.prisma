@@ -1,0 +1,34 @@
+// Mirrors supabase/migrations (the SQL migrations are the source of truth).
+// After a schema change run `npx prisma db pull`, review the diff, then `npx prisma generate`.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  customer
+  product_manager
+  sales_manager
+  support_agent
+
+  @@map("user_role")
+}
+
+model Profile {
+  id             String   @id @db.Uuid
+  email          String   @unique
+  fullName       String   @map("full_name")
+  taxIdEncrypted String?  @map("tax_id_encrypted")
+  homeAddress    String?  @map("home_address")
+  role           UserRole @default(customer)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("profiles")
+}

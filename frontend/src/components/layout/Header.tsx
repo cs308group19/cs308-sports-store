@@ -1,6 +1,6 @@
 import type { Role } from "../../types/models";
 import { type View, roleDefaults } from "../../app/navigation";
-import { type SessionUser } from "../../auth/demoAccounts";
+import type { SessionUser } from "../../auth/types";
 import { Icon } from "../ui/Icon";
 
 export function Header({
