@@ -2,7 +2,21 @@
 
 **Sabancı University · CS308 Software Engineering · Group 19 / Team308**
 
-> Team discussion draft — updated 6 November 2026. This README describes the proposed application and architecture. Features listed here are planned unless explicitly marked as completed. Confirm development responsibilities and the exact backend choice before adopting it as the repository README.
+## Implementation status — 12 November 2026
+
+This branch contains the React/Vite frontend prototype, Emre's NestJS/Supabase
+authentication backend, and the SCRUM-12 store migrations with matching Prisma
+models and database integration tests. The store pages still use mock data;
+catalogue, cart, checkout and review APIs remain to be implemented. Database
+deployment to the team's hosted Supabase project has not been verified.
+
+Start with the [backend setup](backend/README.md),
+[frontend setup](frontend/README.md), and
+[database setup and integration contract](supabase/README.md).
+Local verification used Node.js 24.22.1 and PostgreSQL 17.11.
+
+> The design proposal and planning checklist below are retained from 6 November
+> 2026. They describe intended features, not a current completion checklist.
 
 ## Project overview
 
@@ -178,7 +192,7 @@ cs308-sports-store/
 
 Use separate feature modules in the backend and reusable components/pages in the frontend. Select one database access library and keep migrations in version control.
 
-## Current progress
+## Planning checklist — 6 November snapshot
 
 - [x] Brainstorm project ideas and choose a sports store.
 - [x] Create the Jira project.
@@ -233,7 +247,9 @@ AI assistance is permitted by the brief, but each member must understand and be 
 
 ## Local setup
 
-Installation and run instructions will be added after the applications are scaffolded and their commands are verified. Agree on supported Node.js/PostgreSQL versions, the database access library, environment variables, and package scripts before documenting a runnable setup.
+Use Node.js 24 and the checked-in lockfiles. Follow the [backend instructions](backend/README.md),
+[frontend instructions](frontend/README.md) and [database migration/test guide](supabase/README.md).
+The database guide distinguishes the locally verified setup from the remaining hosted deployment and store API work.
 
 ## Technical references
 
