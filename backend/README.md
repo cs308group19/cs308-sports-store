@@ -44,7 +44,7 @@ npm run start:dev      # http://localhost:3000/api
 
 ### Database
 
-The schema is in `../supabase/migrations/`. Prisma only reads it: `prisma/schema.prisma` mirrors the migrations, and `npx prisma db pull` + `npx prisma generate` refresh it after a schema change.
+The schema is in `../supabase/migrations/`. `prisma/schema.prisma` mirrors its public tables; SQL owns migrations, grants and RLS. Run `npm run prisma:generate` after pulling schema changes. See [database setup and integration contract](../supabase/README.md), including the existing cross-schema Auth foreign key and the separate real-database test. Do not use Prisma Migrate or `db push` on this schema.
 
 ## Demo accounts and roles
 
@@ -69,6 +69,7 @@ Roles: `customer`, `product_manager`, `sales_manager`, `support_agent`. `set-rol
 | `npm run start:dev` | Runs the API with live reload |
 | `npm test` | Unit tests (Vitest) |
 | `npm run test:e2e` | End-to-end tests against a fake Supabase (no network, no database) |
+| `npm run test:database` | Real PostgreSQL + Prisma + Nest auth boundary; requires an empty local `rally_test_*` database via `RALLY_DATABASE_TEST_URL` |
 | `npm run lint` | oxlint |
 | `npm run build` | Compiles to `dist/` |
 
@@ -76,7 +77,7 @@ Roles: `customer`, `product_manager`, `sales_manager`, `support_agent`. `set-rol
 
 ```
 backend/
-├── prisma/schema.prisma        Prisma model of public.profiles
+├── prisma/schema.prisma        Prisma models of profiles and store tables
 ├── prisma.config.ts
 ├── src/
 │   ├── main.ts, app.module.ts, app.setup.ts
