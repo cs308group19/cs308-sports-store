@@ -1,0 +1,25 @@
+# Dependencies and build output
+node_modules/
+dist/
+coverage/
+*.log
+*.tsbuildinfo
+
+# Secrets: never commit real values. Keep only the .env.example templates.
+.env
+.env.*
+!.env.example
+
+# OS and editor files
+.DS_Store
+
+# Supabase CLI local state (written by `supabase link` / `supabase start`), in any folder
+**/supabase/.temp/
+**/supabase/.branches/
+
+# Personal Claude Code / agent tooling (each developer sets up their own)
+.agents/
+.claude/skills
+.claude/settings.local.json
+.mcp.json
+skills-lock.json
