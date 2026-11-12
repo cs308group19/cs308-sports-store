@@ -118,6 +118,9 @@ pages currently use mock data; adding this schema does not make them persistent.
 
 ## Repeatable integration check
 
+Use Node.js 24 (verified with 24.22.1) and npm. `npm ci` installs the locked
+dependencies and generates Prisma's client through the existing postinstall hook.
+
 Create a new **empty, local, disposable** PostgreSQL database with a name starting
 `rally_test_`. It needs `pg_trgm` installed on the server and a test-only database
 administrator connection (the fixture creates roles and schemas). Then:
@@ -131,7 +134,12 @@ npm run test:e2e
 npm run lint
 ```
 
-The database test refuses remote hosts, other database names, and databases that
+The command first runs connection-target regression tests without connecting to
+any database. These can also run alone with
+`node --test test/database-target.test.mjs` from `backend`.
+
+The database test refuses remote hosts, URL query parameters (including host
+overrides), non-PostgreSQL URLs, other database names, and databases that
 already contain application tables. It does not reset or delete an existing
 database. Use a new empty database on each run. It installs **all** migrations,
 including Emre's, then tests real Nest registration/JWT `/me` + Prisma + PostgreSQL,
@@ -144,7 +152,8 @@ a test of the required transaction pattern; there is no production checkout API
 yet. A hosted login → cart → checkout → invoice test is still required after those
 APIs and the real project configuration are available.
 
-Verified on 12 November 2026: 13 database integration checks, 94 existing backend
+Verified on 12 November 2026: 4 connection-target guard tests, 13 database
+integration checks, 94 existing backend
 unit tests and 23 existing HTTP tests passed. Backend build/lint and frontend
 typecheck/production build passed. The local check uses PostgreSQL 17.11 and the
 repository's locked dependencies. This is not a claim that the hosted store is ready.
