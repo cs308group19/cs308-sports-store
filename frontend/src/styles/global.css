@@ -1165,31 +1165,6 @@ textarea:focus {
   font-size: 10px;
   font-weight: 600;
 }
-.staff-login {
-  margin-top: 18px;
-  padding: 22px;
-  border: 1px solid #cfd8e2;
-  border-radius: 10px;
-  background: white;
-}
-.staff-login h3 {
-  margin: 0;
-  font-size: 24px;
-  text-transform: uppercase;
-}
-.staff-login p {
-  margin: 4px 0 14px;
-  color: var(--muted);
-  font-size: 10px;
-}
-.staff-login form {
-  display: grid;
-  grid-template-columns: 1fr 1fr auto;
-  gap: 8px;
-}
-.staff-login input {
-  min-width: 0;
-}
 .demo-accounts {
   margin-top: 14px;
   padding: 14px 16px;
@@ -2533,9 +2508,6 @@ footer {
   .form-card.auth-form {
     width: 100%;
     margin: 0;
-  }
-  .staff-login form {
-    grid-template-columns: 1fr;
   }
   .demo-accounts {
     grid-template-columns: 1fr;
