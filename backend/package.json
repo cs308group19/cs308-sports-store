@@ -19,6 +19,7 @@
     "test:cov": "vitest run --coverage",
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
+    "test:database": "npm run build && node --test test/database.integration.mjs",
     "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
     "user:set-role": "nest build && node dist/scripts/set-role.js",
