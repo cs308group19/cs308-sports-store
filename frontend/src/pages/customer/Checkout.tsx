@@ -1,11 +1,11 @@
 import { type FormEvent } from "react";
-import type { CartLine } from "../../types/models";
+import type { CartView } from "../../types/models";
 import { type View } from "../../app/navigation";
 import { Button } from "../../components/ui/Button";
 import { money } from "../../utils/format";
 
-export function Checkout({ cart, navigate }: { cart: CartLine[]; navigate: (v: View) => void }) {
-  const total = cart.reduce((sum, l) => sum + l.product.price * l.quantity, 0) * 1.08;
+export function Checkout({ cart, navigate }: { cart: CartView; navigate: (v: View) => void }) {
+  const total = cart.total * 1.08;
   const submit = (e: FormEvent) => {
     e.preventDefault();
     navigate("invoice");
@@ -63,12 +63,12 @@ export function Checkout({ cart, navigate }: { cart: CartLine[]; navigate: (v: V
         </div>
         <aside className="summary">
           <h2>Your order</h2>
-          {cart.map((l) => (
-            <div key={l.product.id}>
+          {cart.items.map((line) => (
+            <div key={line.productId}>
               <span>
-                {l.product.name} × {l.quantity}
+                {line.name} × {line.quantity}
               </span>
-              <b>{money(l.product.price * l.quantity)}</b>
+              <b>{money(line.lineTotal)}</b>
             </div>
           ))}
           <div className="total">
