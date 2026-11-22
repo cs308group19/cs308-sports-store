@@ -7,28 +7,9 @@ export interface CartItem {
 export interface ProductSnapshot {
   id: string;
   stock: number;
-  name: string;
-  price: number;
-  imageUrl: string | null;
 }
 
-/** A cart line as the storefront shows it. */
-export interface CartViewItem {
-  productId: string;
-  name: string;
-  price: number;
-  imageUrl: string | null;
-  stock: number;
-  quantity: number;
-  lineTotal: number;
-}
-
-export interface CartView {
-  items: CartViewItem[];
-  total: number;
-}
-
-/** Looks up products. Backed by the database once the store tables exist (SCRUM-12). */
+/** Looks up products a customer may buy (active ones). */
 export interface ProductLookup {
   findById(productId: string): Promise<ProductSnapshot | null>;
 }
@@ -39,7 +20,16 @@ export interface ProductLookup {
  */
 export interface CartStore {
   load(ownerKey: string): Promise<CartItem[]>;
-  save(ownerKey: string, items: CartItem[]): Promise<void>;
+  /**
+   * Reads the cart, lets `change` compute the new lines and saves them, as one step: two requests
+   * for the same cart run one after the other, so neither overwrites the other's change. When
+   * `change` throws, nothing is saved and the error is passed on.
+   */
+  update(ownerKey: string, change: CartChange): Promise<CartItem[]>;
 }
+
+export type CartChange = (
+  items: CartItem[],
+) => CartItem[] | Promise<CartItem[]>;
 
 export const MAX_QUANTITY_PER_ITEM = 99;
