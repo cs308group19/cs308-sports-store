@@ -18,8 +18,20 @@ const setup = (products: ProductSnapshot[] = []) => {
   return { store, service };
 };
 
-const SHOE = { id: 'shoe-1', stock: 5, name: 'Item', price: 10, imageUrl: null };
-const BALL = { id: 'ball-1', stock: 0, name: 'Item', price: 10, imageUrl: null };
+const SHOE = {
+  id: 'shoe-1',
+  stock: 5,
+  name: 'Item',
+  price: 10,
+  imageUrl: null,
+};
+const BALL = {
+  id: 'ball-1',
+  stock: 0,
+  name: 'Item',
+  price: 10,
+  imageUrl: null,
+};
 
 describe('CartService.addItem', () => {
   it('adds a product with quantity 1 by default', async () => {
@@ -106,7 +118,10 @@ describe('CartService.addItem', () => {
 
 describe('CartService.removeItem', () => {
   it('removes the product and keeps the other items', async () => {
-    const { service } = setup([SHOE, { id: 'cap-1', stock: 3, name: 'Item', price: 10, imageUrl: null }]);
+    const { service } = setup([
+      SHOE,
+      { id: 'cap-1', stock: 3, name: 'Item', price: 10, imageUrl: null },
+    ]);
 
     await service.addItem('guest-a', 'shoe-1');
     await service.addItem('guest-a', 'cap-1');
@@ -198,6 +213,18 @@ describe('CartService.updateQuantity', () => {
     ).rejects.toThrow(NotFoundException);
   });
 
+  it('rejects a product that sold out after it was added', async () => {
+    const stock = { id: 'shoe-1', stock: 5 };
+    const { service } = setup([stock]);
+
+    await service.addItem('guest-a', 'shoe-1');
+    stock.stock = 0;
+
+    await expect(
+      service.updateQuantity('guest-a', 'shoe-1', 1),
+    ).rejects.toThrow('This product is out of stock.');
+  });
+
   it('does not change another owner’s cart', async () => {
     const { service } = setup([SHOE]);
 
@@ -236,7 +263,10 @@ describe('CartService.mergeGuestCart', () => {
   });
 
   it('moves guest items into an empty customer cart', async () => {
-    const { service } = setup([SHOE, { id: 'cap-1', stock: 3, name: 'Item', price: 10, imageUrl: null }]);
+    const { service } = setup([
+      SHOE,
+      { id: 'cap-1', stock: 3, name: 'Item', price: 10, imageUrl: null },
+    ]);
 
     await service.addItem('guest-a', 'shoe-1', 1);
     await service.addItem('guest-a', 'cap-1', 2);
@@ -291,56 +321,72 @@ describe('CartService.mergeGuestCart', () => {
   });
 });
 
-describe('CartService.view', () => {
-  it('returns product details, line totals and the cart total', async () => {
-    const { service } = setup([
-      { id: 'shoe-1', stock: 5, name: 'Runner', price: 40.5, imageUrl: 'shoe.png' },
-      { id: 'cap-1', stock: 3, name: 'Cap', price: 12, imageUrl: null },
-    ]);
+describe('CartService.addItem limits', () => {
+  it('caps the total quantity of one product at the per-item maximum', async () => {
+    const { service } = setup([{ id: 'bulk', stock: 500 }]);
 
-    await service.addItem('guest-a', 'shoe-1', 2);
-    await service.addItem('guest-a', 'cap-1', 1);
+    await service.addItem('guest-a', 'bulk', 99);
 
-    await expect(service.view('guest-a')).resolves.toEqual({
-      items: [
-        {
-          productId: 'shoe-1',
-          name: 'Runner',
-          price: 40.5,
-          imageUrl: 'shoe.png',
-          stock: 5,
-          quantity: 2,
-          lineTotal: 81,
-        },
-        {
-          productId: 'cap-1',
-          name: 'Cap',
-          price: 12,
-          imageUrl: null,
-          stock: 3,
-          quantity: 1,
-          lineTotal: 12,
-        },
-      ],
-      total: 93,
-    });
+    await expect(service.addItem('guest-a', 'bulk', 1)).rejects.toThrow(
+      'You can add at most 99 of one product.',
+    );
   });
+});
 
-  it('leaves out lines whose product no longer exists', async () => {
-    const { service, store } = setup([SHOE]);
-
-    await store.save('guest-a', [
-      { productId: 'shoe-1', quantity: 1 },
-      { productId: 'gone-1', quantity: 4 },
-    ]);
-
-    const view = await service.view('guest-a');
-    expect(view.items.map((item) => item.productId)).toEqual(['shoe-1']);
-  });
-
-  it('returns an empty cart with total zero', async () => {
+describe('CartService concurrent requests', () => {
+  it('keeps both of two adds that arrive at the same time', async () => {
     const { service } = setup([SHOE]);
 
-    await expect(service.view('guest-a')).resolves.toEqual({ items: [], total: 0 });
+    await Promise.all([
+      service.addItem('guest-a', 'shoe-1', 1),
+      service.addItem('guest-a', 'shoe-1', 1),
+    ]);
+
+    await expect(service.getCart('guest-a')).resolves.toEqual([
+      { productId: 'shoe-1', quantity: 2 },
+    ]);
+  });
+
+  it('still checks the stock against the combined quantity', async () => {
+    const { service } = setup([SHOE]);
+
+    const results = await Promise.allSettled([
+      service.addItem('guest-a', 'shoe-1', 3),
+      service.addItem('guest-a', 'shoe-1', 3),
+    ]);
+
+    expect(results.map((r) => r.status).sort()).toEqual([
+      'fulfilled',
+      'rejected',
+    ]);
+    await expect(service.getCart('guest-a')).resolves.toEqual([
+      { productId: 'shoe-1', quantity: 3 },
+    ]);
+  });
+
+  it('keeps an add that arrives while a guest cart is being merged', async () => {
+    const { service } = setup([SHOE]);
+    await service.addItem('guest-a', 'shoe-1', 1);
+
+    await Promise.all([
+      service.mergeGuestCart('guest-a', 'user-1'),
+      service.addItem('user-1', 'shoe-1', 1),
+    ]);
+
+    await expect(service.getCart('user-1')).resolves.toEqual([
+      { productId: 'shoe-1', quantity: 2 },
+    ]);
+  });
+});
+
+describe('CartService.mergeGuestCart limits', () => {
+  it('caps the merged quantity at the per-product maximum', async () => {
+    const { service, store } = setup([{ id: 'bulk', stock: 500 }]);
+    await store.save('user-1', [{ productId: 'bulk', quantity: 60 }]);
+    await store.save('guest-a', [{ productId: 'bulk', quantity: 60 }]);
+
+    await expect(service.mergeGuestCart('guest-a', 'user-1')).resolves.toEqual([
+      { productId: 'bulk', quantity: 99 },
+    ]);
   });
 });

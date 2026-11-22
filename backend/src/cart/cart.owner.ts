@@ -5,7 +5,8 @@ const GUEST_TOKEN_PATTERN = /^[A-Za-z0-9-]{16,64}$/;
 
 export const GUEST_TOKEN_HEADER = 'x-cart-token';
 
-export type CartOwner = { kind: 'user'; userId: string } | { kind: 'guest'; token: string };
+export type CartOwner =
+  { kind: 'user'; userId: string } | { kind: 'guest'; token: string };
 
 /** Owner key used by CartService. Users and guests never share a key. */
 export function userOwnerKey(userId: string): string {
@@ -14,7 +15,9 @@ export function userOwnerKey(userId: string): string {
 
 export function guestOwnerKey(token: string | undefined): string {
   if (!token || !GUEST_TOKEN_PATTERN.test(token)) {
-    throw new BadRequestException(`A valid ${GUEST_TOKEN_HEADER} header is required.`);
+    throw new BadRequestException(
+      `A valid ${GUEST_TOKEN_HEADER} header is required.`,
+    );
   }
   return `guest:${token}`;
 }
@@ -26,4 +29,14 @@ export function parseOwnerKey(key: string): CartOwner {
   if (kind === 'user' && value) return { kind: 'user', userId: value };
   if (kind === 'guest' && value) return { kind: 'guest', token: value };
   throw new Error(`Unknown cart owner key: ${key}`);
+}
+
+/** The `carts` row filter for an owner key: guest_token for a visitor, user_id for a customer. */
+export function cartOwnerWhere(
+  ownerKey: string,
+): { guestToken: string } | { userId: string } {
+  const owner = parseOwnerKey(ownerKey);
+  return owner.kind === 'user'
+    ? { userId: owner.userId }
+    : { guestToken: owner.token };
 }
