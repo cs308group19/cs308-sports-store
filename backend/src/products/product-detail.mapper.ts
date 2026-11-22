@@ -11,11 +11,12 @@ import {
 import type {
   ProductDetailResponse,
   ProductReviewResponse,
+  ProductSummaryResponse,
   WarrantyStatusLabel,
 } from './product-detail.types.js';
 
-/** The product row with the relations the detail page needs (see ProductDetailService). */
-export interface ProductDetailRow {
+/** The product columns every customer-facing product response needs (see PRODUCT_SUMMARY_SELECT). */
+export interface ProductSummaryRow {
   id: bigint;
   name: string;
   model: string;
@@ -32,6 +33,10 @@ export interface ProductDetailRow {
   averageRating: DecimalLike;
   reviewCount: number;
   category: { name: string; slug: string };
+}
+
+/** The product row with the relations the detail page needs (see ProductDetailService). */
+export interface ProductDetailRow extends ProductSummaryRow {
   reviews: ProductReviewRow[];
 }
 
@@ -68,7 +73,8 @@ export function toReviewResponse(row: ProductReviewRow): ProductReviewResponse {
   };
 }
 
-export function toProductDetail(row: ProductDetailRow): ProductDetailResponse {
+/** One product card in the shop list (SCRUM-13) and the top half of the detail page (SCRUM-14). */
+export function toProductSummary(row: ProductSummaryRow): ProductSummaryResponse {
   const listPrice = toNumber(row.price);
   const discountRate = toNumber(row.discountRate);
   const price = applyDiscount(listPrice, discountRate);
@@ -93,6 +99,12 @@ export function toProductDetail(row: ProductDetailRow): ProductDetailResponse {
     popularity: row.popularity,
     rating: toNumber(row.averageRating),
     reviews: row.reviewCount,
+  };
+}
+
+export function toProductDetail(row: ProductDetailRow): ProductDetailResponse {
+  return {
+    ...toProductSummary(row),
     // Comments stay hidden until a product manager approves them (feature 5).
     comments: row.reviews
       .filter(
