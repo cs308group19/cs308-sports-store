@@ -18,7 +18,7 @@ const connectionString = validateDatabaseTestTarget(
 );
 const db = new Client({ connectionString });
 const migrationDir = new URL('../../supabase/migrations/', import.meta.url);
-const SEARCH_MIGRATION = '20261122190000_product_search_indexes.sql';
+const SEARCH_MIGRATION = '20261122160038_product_search_indexes.sql';
 const GUEST = randomUUID();
 
 let app, prisma, privateKey, customer, category;

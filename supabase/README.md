@@ -31,8 +31,8 @@ keeps. At login the backend moves it into the customer's cart (`/api/me/cart/mer
 | `20261112150612_auth_profiles.sql` | `profiles`, roles, the access token hook |
 | `20261112150641_auth_hook_search_path.sql` | Pins the hook's `search_path` |
 | `20261117221000_store_domain_schema.sql` | Every store table: catalogue, carts, wishlist, orders, payments, invoices, deliveries, reviews, returns, refunds, notifications, support chat |
-| `20261122190000_product_search_indexes.sql` | `pg_trgm` in the `extensions` schema and trigram indexes on product name and description, used by the shop search (`ILIKE '%word%'`) |
-| `20261122190100_store_number_and_sequence_guards.sql` | Rejects `NaN` in every money column and takes sequence access away from `anon` and `authenticated` |
+| `20261122160038_product_search_indexes.sql` | `pg_trgm` in the `extensions` schema and trigram indexes on product name and description, used by the shop search (`ILIKE '%word%'`) |
+| `20261122160059_store_number_and_sequence_guards.sql` | Rejects `NaN` in every money column and takes sequence access away from `anon` and `authenticated` |
 
 Apply pending files in this order with the team's Supabase migration workflow
 (`supabase db push`), or run them one by one in the dashboard's SQL editor. Do not
@@ -41,6 +41,15 @@ rerun a file that is already applied. The files expect Supabase's `auth.users`,
 
 The last two files carry over the useful parts of the earlier store-table proposal
 (closed PR #3), whose own store migration overlapped with the schema above.
+
+All five files are applied to the team's hosted project (checked on 22 November
+2026 with `supabase migration list`), and their versions match the file names. The
+hosted project already gave the browser roles no sequence access, so there the
+`revoke` in the last file changes nothing; it matters for a fresh database.
+
+When a migration is applied outside the CLI (dashboard, MCP), the history records
+the time it ran, not the file's timestamp. Rename the file to the recorded version
+so that `supabase db push` does not try to run it a second time.
 
 ## Identity and access
 
