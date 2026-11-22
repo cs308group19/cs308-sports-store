@@ -9,8 +9,11 @@ export interface ProductReviewResponse {
   createdAt: string;
 }
 
-/** GET /api/products/:id. Every property the course requires for a product (feature 9). */
-export interface ProductDetailResponse {
+/**
+ * One product as a customer sees it: every property the course requires (feature 9).
+ * GET /api/products returns a list of these; GET /api/products/:id adds the comments.
+ */
+export interface ProductSummaryResponse {
   id: number;
   name: string;
   model: string;
@@ -32,6 +35,10 @@ export interface ProductDetailResponse {
   popularity: number;
   rating: number;
   reviews: number;
+}
+
+/** GET /api/products/:id. */
+export interface ProductDetailResponse extends ProductSummaryResponse {
   /** Approved written comments only; ratings without a comment are counted in `rating`. */
   comments: ProductReviewResponse[];
 }
