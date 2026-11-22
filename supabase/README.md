@@ -43,7 +43,7 @@ The last two files carry over the useful parts of the earlier store-table propos
 (closed PR #3), whose own store migration overlapped with the schema above.
 
 All five files are applied to the team's hosted project (checked on 22 November
-2026 with `supabase migration list`), and their versions match the file names. The
+2026 in its migration history), and their versions match the file names. The
 hosted project already gave the browser roles no sequence access, so there the
 `revoke` in the last file changes nothing; it matters for a fresh database.
 
