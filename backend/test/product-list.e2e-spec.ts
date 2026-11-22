@@ -117,6 +117,36 @@ describe('Product list (e2e)', () => {
     expect(prisma.product.findFirst).not.toHaveBeenCalled();
   });
 
+  it('searches names and descriptions (SCRUM-28)', async () => {
+    prisma.product.findMany.mockResolvedValue([row]);
+    await request(app.getHttpServer())
+      .get('/api/products?q=%20Lightweight%20RUNNING%20')
+      .expect(200);
+    expect(prisma.product.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          isActive: true,
+          AND: ['lightweight', 'running'].map((contains) => ({
+            OR: [
+              { name: { contains, mode: 'insensitive' } },
+              { description: { contains, mode: 'insensitive' } },
+            ],
+          })),
+        },
+      }),
+    );
+  });
+
+  it.each([['a search that is too long', `q=${'a'.repeat(101)}`]])(
+    'answers 400 for %s, without touching the database',
+    async (_label, query) => {
+      await request(app.getHttpServer())
+        .get(`/api/products?${query}`)
+        .expect(400);
+      expect(prisma.product.findMany).not.toHaveBeenCalled();
+    },
+  );
+
   it('lists categories with product counts for guests', async () => {
     prisma.category.findMany.mockResolvedValue([
       { id: 2n, name: 'Running', slug: 'running', _count: { products: 4 } },
