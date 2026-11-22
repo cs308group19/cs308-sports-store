@@ -4,7 +4,7 @@ export type Category = string;
 export type OrderStatus = "Processing" | "In transit" | "Delivered";
 
 export interface Product {
-  id: number;
+  id: number | string;
   name: string;
   category: Category;
   price: number;

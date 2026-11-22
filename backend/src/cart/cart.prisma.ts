@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { isDatabaseId } from '../common/id.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { cartOwnerWhere } from './cart.owner.js';
 import type {
@@ -83,8 +84,9 @@ export class PrismaProductLookup implements ProductLookup {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async findById(productId: string): Promise<ProductSnapshot | null> {
-    // A positive whole number that fits the BIGINT id column; anything else cannot exist.
-    if (!/^[1-9]\d{0,17}$/.test(productId)) return null;
+    // Only a positive whole number that fits the BIGINT id column can exist (same rule as the
+    // product page, so every product a customer can open can also go in the cart).
+    if (!isDatabaseId(productId)) return null;
     const product = await this.prisma.product.findFirst({
       where: { id: BigInt(productId), isActive: true },
       select: { id: true, stockQuantity: true },

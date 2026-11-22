@@ -14,7 +14,7 @@ export interface ProductReviewResponse {
  * GET /api/products returns a list of these; GET /api/products/:id adds the comments.
  */
 export interface ProductSummaryResponse {
-  id: number;
+  id: number | string;
   name: string;
   model: string;
   serial: string;
