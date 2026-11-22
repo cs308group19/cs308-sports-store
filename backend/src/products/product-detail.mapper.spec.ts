@@ -3,6 +3,7 @@ import {
   type ProductReviewRow,
   shortAuthorName,
   toProductDetail,
+  toProductSummary,
 } from './product-detail.mapper.js';
 
 const review = (
@@ -136,5 +137,18 @@ describe('shortAuthorName', () => {
     ['   ', 'Verified buyer'],
   ])('%j -> %j', (input, expected) => {
     expect(shortAuthorName(input)).toBe(expected);
+  });
+});
+
+describe('toProductSummary', () => {
+  it('has the same product fields as the detail page, without comments', () => {
+    const { reviews: _reviews, ...summaryRow } = row({ reviews: [review()] });
+    const summary = toProductSummary(summaryRow);
+    const { comments, ...detailWithoutComments } = toProductDetail(
+      row({ reviews: [review()] }),
+    );
+    expect(comments).toHaveLength(1);
+    expect(summary).toEqual(detailWithoutComments);
+    expect(summary).not.toHaveProperty('comments');
   });
 });
