@@ -86,3 +86,19 @@ export function isDuplicateCategory(
     (name) => normalizeCategoryName(name).toLocaleLowerCase('en-US') === wanted,
   );
 }
+
+/** Keeps only the products in the given category. Out-of-stock products are kept so they stay visible. */
+export function filterByCategory<T extends { categoryId: string }>(
+  products: readonly T[],
+  categoryId: string,
+): T[] {
+  return products.filter((product) => product.categoryId === categoryId);
+}
+
+/** Returns the product with this id, or null when it does not exist. */
+export function findProductById<T extends { id: string }>(
+  products: readonly T[],
+  id: string,
+): T | null {
+  return products.find((product) => product.id === id) ?? null;
+}
