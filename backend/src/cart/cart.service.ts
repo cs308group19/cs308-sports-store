@@ -7,6 +7,8 @@ import {
 import {
   type CartItem,
   type CartStore,
+  type CartView,
+  type CartViewItem,
   MAX_QUANTITY_PER_ITEM,
   type ProductLookup,
 } from './cart.types.js';
@@ -14,7 +16,7 @@ import {
 export const CART_STORE = Symbol('CART_STORE');
 export const PRODUCT_LOOKUP = Symbol('PRODUCT_LOOKUP');
 
-/** SCRUM-16. Adds and removes cart items and changes their quantity, never beyond the stock. */
+/** Adds, removes and changes the quantity of cart items. */
 @Injectable()
 export class CartService {
   constructor(
@@ -26,96 +28,161 @@ export class CartService {
     return this.store.load(requireOwner(ownerKey));
   }
 
+  /** The cart with product details, prices and the total, as the storefront displays it. */
+  async view(ownerKey: string): Promise<CartView> {
+    const items = await this.store.load(requireOwner(ownerKey));
+    const lines: CartViewItem[] = [];
+    for (const item of items) {
+      const product = await this.products.findById(item.productId);
+      if (!product) continue;
+      const lineTotal = Math.round(product.price * item.quantity * 100) / 100;
+      lines.push({
+        productId: product.id,
+        name: product.name,
+        price: product.price,
+        imageUrl: product.imageUrl,
+        stock: product.stock,
+        quantity: item.quantity,
+        lineTotal,
+      });
+    }
+    const total = Math.round(lines.reduce((sum, line) => sum + line.lineTotal, 0) * 100) / 100;
+    return { items: lines, total };
+  }
+
   async addItem(
     ownerKey: string,
     productId: string,
     quantity = 1,
   ): Promise<CartItem[]> {
     const owner = requireOwner(ownerKey);
-    requireQuantity(quantity);
-    const stock = await this.stockOf(productId);
 
-    return this.store.update(owner, (items) => {
-      const existing = items.find((item) => item.productId === productId);
-      const requested = (existing?.quantity ?? 0) + quantity;
+    if (
+      !Number.isInteger(quantity) ||
+      quantity < 1 ||
+      quantity > MAX_QUANTITY_PER_ITEM
+    ) {
+      throw new BadRequestException(
+        `Quantity must be a whole number between 1 and ${MAX_QUANTITY_PER_ITEM}.`,
+      );
+    }
 
-      if (requested > MAX_QUANTITY_PER_ITEM) {
-        throw new BadRequestException(
-          `You can add at most ${MAX_QUANTITY_PER_ITEM} of one product.`,
-        );
-      }
-      if (requested > stock) {
-        throw new BadRequestException(`Only ${stock} left in stock.`);
-      }
+    const product = await this.products.findById(productId);
+    if (!product) {
+      throw new NotFoundException('Product not found.');
+    }
+    if (product.stock === 0) {
+      throw new BadRequestException('This product is out of stock.');
+    }
 
-      return existing
-        ? items.map((item) =>
-            item.productId === productId
-              ? { ...item, quantity: requested }
-              : item,
-          )
-        : [...items, { productId, quantity }];
-    });
+    const items = await this.store.load(owner);
+    const existing = items.find((item) => item.productId === productId);
+    const requested = (existing?.quantity ?? 0) + quantity;
+
+    if (requested > product.stock) {
+      throw new BadRequestException(
+        `Only ${product.stock} left in stock.`,
+      );
+    }
+
+    const next = existing
+      ? items.map((item) =>
+          item.productId === productId
+            ? { ...item, quantity: requested }
+            : item,
+        )
+      : [...items, { productId, quantity }];
+
+    await this.store.save(owner, next);
+    return next;
   }
 
-  /** Sets the quantity of a product that is already in the cart (the + and − buttons). */
-  async setQuantity(
+  async updateQuantity(
     ownerKey: string,
     productId: string,
     quantity: number,
   ): Promise<CartItem[]> {
     const owner = requireOwner(ownerKey);
-    requireQuantity(quantity);
-    // Looked up before the cart is locked, so the lock is held as briefly as possible.
-    const stock = await this.stockOf(productId);
-    if (quantity > stock) {
-      throw new BadRequestException(`Only ${stock} left in stock.`);
+
+    if (
+      !Number.isInteger(quantity) ||
+      quantity < 1 ||
+      quantity > MAX_QUANTITY_PER_ITEM
+    ) {
+      throw new BadRequestException(
+        `Quantity must be a whole number between 1 and ${MAX_QUANTITY_PER_ITEM}.`,
+      );
     }
 
-    return this.store.update(owner, (items) => {
-      if (!items.some((item) => item.productId === productId)) {
-        throw new NotFoundException('This product is not in the cart.');
-      }
-
-      return items.map((item) =>
-        item.productId === productId ? { ...item, quantity } : item,
-      );
-    });
-  }
-
-  async removeItem(ownerKey: string, productId: string): Promise<CartItem[]> {
-    const owner = requireOwner(ownerKey);
-    return this.store.update(owner, (items) => {
-      const next = items.filter((item) => item.productId !== productId);
-      if (next.length === items.length) {
-        throw new NotFoundException('This product is not in the cart.');
-      }
-      return next;
-    });
-  }
-
-  /** Stock of a product a customer may buy. Out-of-stock products cannot go in the cart. */
-  private async stockOf(productId: string): Promise<number> {
     const product = await this.products.findById(productId);
     if (!product) {
       throw new NotFoundException('Product not found.');
     }
-    if (product.stock <= 0) {
-      throw new BadRequestException('This product is out of stock.');
-    }
-    return product.stock;
-  }
-}
 
-function requireQuantity(quantity: number): void {
-  if (
-    !Number.isInteger(quantity) ||
-    quantity < 1 ||
-    quantity > MAX_QUANTITY_PER_ITEM
-  ) {
-    throw new BadRequestException(
-      `Quantity must be a whole number between 1 and ${MAX_QUANTITY_PER_ITEM}.`,
+    const items = await this.store.load(owner);
+    if (!items.some((item) => item.productId === productId)) {
+      throw new NotFoundException('This product is not in the cart.');
+    }
+    if (quantity > product.stock) {
+      throw new BadRequestException(`Only ${product.stock} left in stock.`);
+    }
+
+    const next = items.map((item) =>
+      item.productId === productId ? { ...item, quantity } : item,
     );
+
+    await this.store.save(owner, next);
+    return next;
+  }
+
+  /**
+   * Moves a guest cart into a customer cart at login. Quantities of the same product are added
+   * and capped at the stock. The guest cart is emptied afterwards.
+   */
+  async mergeGuestCart(guestKey: string, userKey: string): Promise<CartItem[]> {
+    const guest = requireOwner(guestKey);
+    const user = requireOwner(userKey);
+    const guestItems = await this.store.load(guest);
+    const userItems = await this.store.load(user);
+
+    if (guest === user || guestItems.length === 0) {
+      return userItems;
+    }
+
+    const merged = new Map<string, number>(
+      userItems.map((item) => [item.productId, item.quantity]),
+    );
+
+    for (const item of guestItems) {
+      const product = await this.products.findById(item.productId);
+      if (!product) {
+        continue;
+      }
+      const combined = (merged.get(item.productId) ?? 0) + item.quantity;
+      const capped = Math.min(combined, product.stock);
+      if (capped > 0) {
+        merged.set(item.productId, capped);
+      }
+    }
+
+    const next = [...merged].map(([productId, quantity]) => ({ productId, quantity }));
+
+    await this.store.save(user, next);
+    await this.store.save(guest, []);
+    return next;
+  }
+
+  async removeItem(ownerKey: string, productId: string): Promise<CartItem[]> {
+    const owner = requireOwner(ownerKey);
+    const items = await this.store.load(owner);
+    const next = items.filter((item) => item.productId !== productId);
+
+    if (next.length === items.length) {
+      throw new NotFoundException('This product is not in the cart.');
+    }
+
+    await this.store.save(owner, next);
+    return next;
   }
 }
 
