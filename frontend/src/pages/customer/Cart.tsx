@@ -13,7 +13,7 @@ export function Cart({
   navigate: (v: View) => void;
 }) {
   const subtotal = cart.reduce((sum, line) => sum + line.product.price * line.quantity, 0);
-  const update = (id: number, delta: number) =>
+  const update = (id: CartLine["product"]["id"], delta: number) =>
     setCart(
       cart.map((line) =>
         line.product.id === id ? { ...line, quantity: Math.max(1, line.quantity + delta) } : line,
