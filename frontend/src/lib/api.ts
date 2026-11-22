@@ -26,9 +26,14 @@ async function errorMessage(response: Response): Promise<string> {
 /** Calls the backend. Sends the signed-in user's access token unless `auth` is false. */
 export async function apiFetch<T>(
   path: string,
-  options: { method?: string; body?: unknown; auth?: boolean } = {},
+  options: {
+    method?: string;
+    body?: unknown;
+    auth?: boolean;
+    headers?: Record<string, string>;
+  } = {},
 ): Promise<T> {
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { ...options.headers };
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
   if (options.auth !== false) {
     const { data } = await supabase.auth.getSession();
