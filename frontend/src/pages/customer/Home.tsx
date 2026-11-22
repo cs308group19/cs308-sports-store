@@ -4,7 +4,6 @@ import {
   type CategorySummary,
   fetchCategories,
   fetchProducts,
-  PLACEHOLDER_IMAGE,
 } from "../../services/productApi";
 import { type View } from "../../app/navigation";
 import { Button } from "../../components/ui/Button";
@@ -62,7 +61,7 @@ export function Home({
           </Button>
         </div>
         <div className="hero-image">
-          <img src={products[0]?.image ?? PLACEHOLDER_IMAGE} alt="Performance sneakers in a dark studio" />
+          <img src="/images/running-track.webp" alt="Sprinter accelerating on an outdoor track" />
           <div className="hero-stat">
             <b>4.9/5</b>
             <span>Trusted by 12k+ athletes</span>

@@ -1052,7 +1052,7 @@ textarea:focus {
 .auth-art {
   background:
     linear-gradient(#071a33dd, #071a33dd),
-    url("https://images.unsplash.com/photo-1789520482092-bf7a66ef8281?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&q=85&w=1200")
+    url("/images/basketball-court.webp")
       center/cover;
   color: white;
   display: flex;
