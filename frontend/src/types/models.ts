@@ -1,6 +1,5 @@
 export type Role = "Customer" | "Product Manager" | "Sales Manager" | "Support Agent";
-/** Category names come from the database (GET /api/categories), so any name is allowed. */
-export type Category = string;
+export type Category = "Basketball" | "Football" | "Running" | "Gym" | "Sneakers" | "Accessories";
 export type OrderStatus = "Processing" | "In transit" | "Delivered";
 
 export interface Product {
@@ -23,14 +22,6 @@ export interface Product {
   warrantyStatus: "Active" | "Expired" | "Not applicable";
 }
 
-export interface ProductComment {
-  id: string;
-  rating: number;
-  comment: string;
-  author: string;
-  createdAt: string;
-}
-
 export interface OrderProduct {
   product: Product;
   quantity: number;
@@ -47,9 +38,20 @@ export interface Order {
   withinReturnWindow?: boolean;
 }
 
-export interface CartLine {
-  product: Product;
+/** A cart line as the backend returns it (SCRUM-16). */
+export interface CartViewItem {
+  productId: string;
+  name: string;
+  price: number;
+  imageUrl: string | null;
+  stock: number;
   quantity: number;
+  lineTotal: number;
+}
+
+export interface CartView {
+  items: CartViewItem[];
+  total: number;
 }
 
 export interface ChatMessage {
