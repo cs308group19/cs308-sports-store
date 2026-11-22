@@ -44,7 +44,7 @@ npm run start:dev      # http://localhost:3000/api
 
 ### Database
 
-The schema is in `../supabase/migrations/`. Prisma only reads it: `prisma/schema.prisma` mirrors the migrations, and `npx prisma db pull` + `npx prisma generate` refresh it after a schema change.
+The schema is in `../supabase/migrations/`; SQL owns the tables, checks, grants and RLS. `prisma/schema.prisma` mirrors the public tables: update it by hand after a schema change, then run `npm run prisma:generate`. Never use Prisma Migrate or `db push` on this schema. See the [database guide](../supabase/README.md), including how to run the tests against a real PostgreSQL.
 
 ## Demo accounts and roles
 
@@ -70,6 +70,7 @@ Roles: `customer`, `product_manager`, `sales_manager`, `support_agent`. `set-rol
 | `npm run start:dev` | Runs the API with live reload |
 | `npm test` | Unit tests (Vitest) |
 | `npm run test:e2e` | End-to-end tests against a fake Supabase (no network, no database) |
+| `npm run test:database` | The backend against a real local PostgreSQL with every migration applied; needs an empty `rally_test_*` database in `RALLY_DATABASE_TEST_URL` (see [database guide](../supabase/README.md)) |
 | `npm run lint` | oxlint |
 | `npm run build` | Compiles to `dist/` |
 

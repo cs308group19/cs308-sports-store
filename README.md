@@ -233,7 +233,7 @@ AI assistance is permitted by the brief, but each member must understand and be 
 
 ## Local setup
 
-Installation and run instructions will be added after the applications are scaffolded and their commands are verified. Agree on supported Node.js/PostgreSQL versions, the database access library, environment variables, and package scripts before documenting a runnable setup.
+Use Node.js 24 and the checked-in lockfiles. Follow the [backend instructions](backend/README.md), the [frontend instructions](frontend/README.md) and the [database guide](supabase/README.md), which lists the migrations in order and explains how to test against a real PostgreSQL.
 
 ## Technical references
 
