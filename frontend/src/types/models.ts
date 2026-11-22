@@ -22,6 +22,14 @@ export interface Product {
   warrantyStatus: "Active" | "Expired" | "Not applicable";
 }
 
+export interface ProductComment {
+  id: string;
+  rating: number;
+  comment: string;
+  author: string;
+  createdAt: string;
+}
+
 export interface OrderProduct {
   product: Product;
   quantity: number;
