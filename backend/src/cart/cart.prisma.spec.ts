@@ -125,7 +125,7 @@ describe('PrismaCartStore.update', () => {
 });
 
 describe('PrismaProductLookup', () => {
-  it.each(['shoe-1', 'abc', '0', '-1', '', '1'.repeat(19)])(
+  it.each(['shoe-1', 'abc', '0', '-1', '', '9'.repeat(19)])(
     'returns null for the invalid id "%s" without querying the database',
     async (id) => {
       const { prisma, service } = fakePrisma();
@@ -146,6 +146,18 @@ describe('PrismaProductLookup', () => {
     ).resolves.toEqual({ id: '42', stock: 5 });
     expect(prisma.product.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: 42n, isActive: true } }),
+    );
+  });
+
+  it('looks up the largest BIGINT id, like the product page does', async () => {
+    const { prisma, service } = fakePrisma();
+    prisma.product.findFirst.mockResolvedValue(null);
+
+    await new PrismaProductLookup(service).findById('9223372036854775807');
+    expect(prisma.product.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 9223372036854775807n, isActive: true },
+      }),
     );
   });
 

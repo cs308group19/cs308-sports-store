@@ -1,6 +1,6 @@
 import { ApiError, apiFetch } from "../lib/api";
 import { getGuestToken } from "../lib/guestToken";
-import type { CartView } from "../types/models";
+import type { CartView, Product } from "../types/models";
 
 const TOKEN_HEADER = "x-cart-token";
 
@@ -27,7 +27,7 @@ export function fetchCart(signedIn: boolean): Promise<CartView> {
   return request(signedIn, "");
 }
 
-export function addCartItem(productId: number, signedIn: boolean): Promise<CartView> {
+export function addCartItem(productId: Product["id"], signedIn: boolean): Promise<CartView> {
   return request(signedIn, "/items", { method: "POST", body: { productId: String(productId) } });
 }
 
