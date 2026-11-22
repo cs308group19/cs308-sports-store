@@ -1,59 +1,57 @@
-import { apiFetch } from "../lib/api";
-import type { CartLine } from "../types/models";
-import { type ProductSummaryResponse, toProduct } from "./productApi";
+import { ApiError, apiFetch } from "../lib/api";
+import { getGuestToken } from "../lib/guestToken";
+import type { CartView } from "../types/models";
 
-/** Shape of GET /api/cart (backend/src/cart/cart.view.ts). */
-interface CartResponse {
-  items: { product: ProductSummaryResponse; quantity: number }[];
+const TOKEN_HEADER = "x-cart-token";
+
+/** Signed-in customers use /me/cart. Visitors use /cart and send their guest token. */
+function route(signedIn: boolean, path: string): string {
+  return signedIn ? `/me/cart${path}` : `/cart${path}`;
 }
 
-const TOKEN_KEY = "rally.cartToken";
-let memoryToken: string | undefined;
-
-/**
- * SCRUM-16. A random id for this browser's guest cart. It is kept in localStorage so the cart
- * survives a reload; if storage is blocked (private mode) it lasts until the tab is closed.
- */
-export function getCartToken(): string {
-  try {
-    const stored = window.localStorage.getItem(TOKEN_KEY);
-    if (stored) return stored;
-  } catch {
-    // Storage is unavailable; fall back to a token that lives in memory.
-  }
-  memoryToken ??= crypto.randomUUID();
-  try {
-    window.localStorage.setItem(TOKEN_KEY, memoryToken);
-  } catch {
-    // Same as above: the in-memory token still works for this visit.
-  }
-  return memoryToken;
+function guestOptions() {
+  return { auth: false, headers: { [TOKEN_HEADER]: getGuestToken() } };
 }
 
-function cartRequest(path: string, method = "GET", body?: unknown): Promise<CartLine[]> {
-  return apiFetch<CartResponse>(`/cart${path}`, {
-    method,
-    body,
-    auth: false,
-    headers: { "X-Cart-Token": getCartToken() },
-  }).then((response) =>
-    response.items.map((item) => ({ product: toProduct(item.product), quantity: item.quantity })),
-  );
+function request(
+  signedIn: boolean,
+  path: string,
+  options: { method?: string; body?: unknown } = {},
+): Promise<CartView> {
+  return signedIn
+    ? apiFetch<CartView>(route(true, path), options)
+    : apiFetch<CartView>(route(false, path), { ...options, ...guestOptions() });
 }
 
-export function fetchCart(): Promise<CartLine[]> {
-  return cartRequest("");
+export function fetchCart(signedIn: boolean): Promise<CartView> {
+  return request(signedIn, "");
 }
 
-/** Adding a product that is already in the cart raises its quantity. */
-export function addCartItem(productId: number, quantity = 1): Promise<CartLine[]> {
-  return cartRequest("/items", "POST", { productId, quantity });
+export function addCartItem(productId: number, signedIn: boolean): Promise<CartView> {
+  return request(signedIn, "/items", { method: "POST", body: { productId: String(productId) } });
 }
 
-export function setCartItemQuantity(productId: number, quantity: number): Promise<CartLine[]> {
-  return cartRequest(`/items/${productId}`, "PATCH", { quantity });
+export function setCartQuantity(
+  productId: string,
+  quantity: number,
+  signedIn: boolean,
+): Promise<CartView> {
+  return request(signedIn, `/items/${productId}`, { method: "PATCH", body: { quantity } });
 }
 
-export function removeCartItem(productId: number): Promise<CartLine[]> {
-  return cartRequest(`/items/${productId}`, "DELETE");
+export function removeCartItem(productId: string, signedIn: boolean): Promise<CartView> {
+  return request(signedIn, `/items/${productId}`, { method: "DELETE" });
+}
+
+/** Moves the guest cart into the signed-in customer's cart. Call right after login. */
+export function mergeGuestCart(): Promise<CartView> {
+  return apiFetch<CartView>("/me/cart/merge", {
+    method: "POST",
+    headers: { [TOKEN_HEADER]: getGuestToken() },
+  });
+}
+
+export function cartErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) return error.message;
+  return "Something went wrong with your cart. Please try again.";
 }
