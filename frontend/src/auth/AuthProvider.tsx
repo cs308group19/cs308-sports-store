@@ -11,6 +11,7 @@ import {
 import { ApiError, apiFetch } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import { roleFromApi } from "./roles";
+import { normalizeEmail, signInErrorMessage } from "./signIn";
 import type { ApiRole, RegisterInput, SessionUser } from "./types";
 
 interface MeResponse {
@@ -119,14 +120,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signingInRef.current = true;
       try {
         const { error } = await supabase.auth.signInWithPassword({
-          email: email.trim().toLowerCase(),
+          email: normalizeEmail(email),
           password,
         });
-        if (error) {
-          throw new Error(
-            error.code === "invalid_credentials" ? "Wrong email or password." : error.message,
-          );
-        }
+        if (error) throw new Error(signInErrorMessage(error));
         try {
           const current = await fetchCurrentUser();
           applyUser(current);

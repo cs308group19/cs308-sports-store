@@ -1,3 +1,4 @@
+import { cataloguePhoto } from "./cataloguePhoto";
 import { apiFetch } from "../lib/api";
 import type { Category, Product, ProductComment } from "../types/models";
 
@@ -41,10 +42,6 @@ export interface ProductDetail extends Product {
   comments: ProductComment[];
 }
 
-/** Used when the database has no image for a product yet. */
-export const PLACEHOLDER_IMAGE =
-  "https://images.unsplash.com/photo-1789520482092-bf7a66ef8281?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&q=85&w=900";
-
 export function toProduct(response: ProductSummaryResponse): Product {
   return {
     id: response.id,
@@ -56,7 +53,7 @@ export function toProduct(response: ProductSummaryResponse): Product {
     reviews: response.reviews,
     stock: response.stock,
     popularity: response.popularity,
-    image: response.image ?? PLACEHOLDER_IMAGE,
+    image: response.image?.trim() || cataloguePhoto(response.model),
     model: response.model,
     serial: response.serial,
     warranty: response.warranty,
@@ -70,10 +67,36 @@ export function toProductDetail(response: ProductDetailResponse): ProductDetail 
   return { ...toProduct(response), comments: response.comments };
 }
 
-/** SCRUM-13. Public endpoint. Pass a category slug to list one category only. */
-export async function fetchProducts(categorySlug?: string): Promise<Product[]> {
-  const query = categorySlug ? `?category=${encodeURIComponent(categorySlug)}` : "";
-  const response = await apiFetch<ProductSummaryResponse[]>(`/products${query}`, { auth: false });
+/** SCRUM-29. Orders GET /api/products accepts. Price is the price after the discount. */
+export type ProductSort = "popularity" | "price-asc" | "price-desc";
+
+/** The backend rejects longer searches (backend/src/products/product-list.service.ts). */
+export const MAX_SEARCH_LENGTH = 100;
+
+export interface ProductListOptions {
+  /** Category slug from GET /api/categories. Empty or missing means every category. */
+  category?: string;
+  /** SCRUM-28. Words to find in the product name or description. */
+  search?: string;
+  sort?: ProductSort;
+}
+
+/** Builds the GET /api/products path, leaving out every option that is not set. */
+export function productListPath({ category, search, sort }: ProductListOptions = {}): string {
+  const params = new URLSearchParams();
+  if (category) params.set("category", category);
+  const words = search?.trim();
+  if (words) params.set("q", words);
+  if (sort && sort !== "popularity") params.set("sort", sort);
+  const query = params.toString();
+  return query ? `/products?${query}` : "/products";
+}
+
+/** SCRUM-13, 28 and 29. Public endpoint: filter, search and sort happen on the server. */
+export async function fetchProducts(options: ProductListOptions = {}): Promise<Product[]> {
+  const response = await apiFetch<ProductSummaryResponse[]>(productListPath(options), {
+    auth: false,
+  });
   return response.map(toProduct);
 }
 

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import type { Role, Product, CartLine } from "./types/models";
+import type { Role, Product, CartView } from "./types/models";
+import { addCartItem, cartErrorMessage, fetchCart, mergeGuestCart, removeCartItem, setCartQuantity } from "./services/cartApi";
 import { products } from "./services/mockStore";
 import { type View, roleDefaults, roleNav, staffViews } from "./app/navigation";
 import { useAuth } from "./auth/AuthProvider";
@@ -35,7 +36,7 @@ export default function App() {
   const [returnTo, setReturnTo] = useState<View>("home");
   const [authOrigin, setAuthOrigin] = useState<View>("home");
   const [selected, setSelected] = useState<Product>(products[0]);
-  const [cart, setCart] = useState<CartLine[]>([{ product: products[2], quantity: 1 }]);
+  const [cart, setCart] = useState<CartView>({ items: [], total: 0 });
   const [wishlist, setWishlist] = useState<Product[]>([products[0], products[4]]);
   const [shopCategory, setShopCategory] = useState("");
   const [toast, setToast] = useState("");
@@ -109,16 +110,48 @@ export default function App() {
     window.setTimeout(() => setToast(""), 2200);
   };
 
-  const addToCart = (product: Product) => {
-    setCart((current) => {
-      const found = current.find((line) => line.product.id === product.id);
-      if (found)
-        return current.map((line) =>
-          line.product.id === product.id ? { ...line, quantity: line.quantity + 1 } : line,
-        );
-      return [...current, { product, quantity: 1 }];
-    });
-    notify(`${product.name} added to cart`);
+  // Load the cart on page load and after login. A guest cart is merged into the customer cart first.
+  useEffect(() => {
+    if (loading) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        if (user) await mergeGuestCart();
+        const view = await fetchCart(Boolean(user));
+        if (!cancelled) setCart(view);
+      } catch (error) {
+        if (!cancelled) notify(cartErrorMessage(error));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // The cart depends on who is signed in, not on the rest of the user object.
+  }, [loading, user?.id]);
+
+  const addToCart = async (product: Product) => {
+    try {
+      setCart(await addCartItem(product.id, Boolean(user)));
+      notify(`${product.name} added to cart`);
+    } catch (error) {
+      notify(cartErrorMessage(error));
+    }
+  };
+
+  const changeCartQuantity = async (productId: string, quantity: number) => {
+    try {
+      setCart(await setCartQuantity(productId, quantity, Boolean(user)));
+    } catch (error) {
+      notify(cartErrorMessage(error));
+    }
+  };
+
+  const removeFromCart = async (productId: string) => {
+    try {
+      setCart(await removeCartItem(productId, Boolean(user)));
+    } catch (error) {
+      notify(cartErrorMessage(error));
+    }
   };
 
   /** Opens the shop on one category (slug from GET /api/categories). */
@@ -158,7 +191,15 @@ export default function App() {
           navigate={navigate}
         />
       );
-    if (view === "cart") return <Cart cart={cart} setCart={setCart} navigate={navigate} />;
+    if (view === "cart")
+      return (
+        <Cart
+          cart={cart}
+          changeQuantity={changeCartQuantity}
+          removeItem={removeFromCart}
+          navigate={navigate}
+        />
+      );
     if (view === "login")
       return (
         <AuthPage
@@ -195,7 +236,7 @@ export default function App() {
         nav={roleNav[role]}
         view={view}
         navigate={navigate}
-        cartCount={cart.reduce((sum, line) => sum + line.quantity, 0)}
+        cartCount={cart.items.reduce((sum, line) => sum + line.quantity, 0)}
         mobileOpen={mobileOpen}
         setMobileOpen={setMobileOpen}
       />
