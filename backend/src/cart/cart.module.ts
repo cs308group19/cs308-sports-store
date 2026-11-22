@@ -1,18 +1,15 @@
 import { Module } from '@nestjs/common';
-import { CartController } from './cart.controller.js';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { CartController, GuestCartController } from './cart.controller.js';
+import { PrismaCartStore, PrismaProductLookup } from './cart.prisma.js';
 import { CART_STORE, CartService, PRODUCT_LOOKUP } from './cart.service.js';
-import { PrismaCartStore, PrismaProductLookup } from './cart.store.prisma.js';
-import { CartViewService } from './cart.view.js';
 
-/** SCRUM-16. The shopping cart, stored in the database. */
 @Module({
-  controllers: [CartController],
+  controllers: [CartController, GuestCartController],
   providers: [
     CartService,
-    CartViewService,
-    { provide: CART_STORE, useClass: PrismaCartStore },
-    { provide: PRODUCT_LOOKUP, useClass: PrismaProductLookup },
+    { provide: CART_STORE, inject: [PrismaService], useFactory: (prisma: PrismaService) => new PrismaCartStore(prisma) },
+    { provide: PRODUCT_LOOKUP, inject: [PrismaService], useFactory: (prisma: PrismaService) => new PrismaProductLookup(prisma) },
   ],
-  exports: [CartService],
 })
 export class CartModule {}

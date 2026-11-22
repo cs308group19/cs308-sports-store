@@ -1,44 +1,30 @@
 import { BadRequestException } from '@nestjs/common';
 import { describe, expect, it } from 'vitest';
-import {
-  cartOwnerWhere,
-  guestOwnerKey,
-  parseGuestToken,
-  userOwnerKey,
-} from './cart.owner.js';
-
-const TOKEN = '3f2b8c1e-5d4a-4f6b-9a7c-1e2d3c4b5a69';
-
-describe('parseGuestToken', () => {
-  it('accepts a random UUID', () => {
-    expect(parseGuestToken(TOKEN)).toBe(TOKEN);
-  });
-
-  it.each([undefined, '', 'guest-a', '1234', `${TOKEN}x`, ['a', 'b']])(
-    'rejects %s',
-    (raw) => {
-      expect(() => parseGuestToken(raw)).toThrow(BadRequestException);
-    },
-  );
-});
+import { guestOwnerKey, parseOwnerKey, userOwnerKey } from './cart.owner.js';
 
 describe('cart owner keys', () => {
-  it('maps a guest token to the guest_token column, ignoring letter case', () => {
-    expect(cartOwnerWhere(guestOwnerKey(TOKEN.toUpperCase()))).toEqual({
-      guestToken: TOKEN,
-    });
+  it('accepts a random UUID as a guest token', () => {
+    expect(guestOwnerKey('3f1c2a9e-7b4d-4e8a-9c1f-2d5b6a7e8f90')).toBe(
+      'guest:3f1c2a9e-7b4d-4e8a-9c1f-2d5b6a7e8f90',
+    );
   });
 
-  it('maps a signed-in user to the user_id column', () => {
-    expect(cartOwnerWhere(userOwnerKey('user-1'))).toEqual({
-      userId: 'user-1',
-    });
-  });
-
-  it.each(['guest:', 'user:', 'admin:x', 'nothing'])(
-    'rejects the malformed key %s',
-    (key) => {
-      expect(() => cartOwnerWhere(key)).toThrow(BadRequestException);
+  it.each([undefined, '', 'short', 'has spaces in it at all', 'x'.repeat(65)])(
+    'rejects the guest token %s',
+    (token) => {
+      expect(() => guestOwnerKey(token)).toThrow(BadRequestException);
     },
   );
+
+  it('keeps guest and user keys apart even for the same text', () => {
+    expect(userOwnerKey('abc')).not.toBe(guestOwnerKey('abcdefghijklmnop'));
+  });
+
+  it('parses both key kinds back into their parts', () => {
+    expect(parseOwnerKey(userOwnerKey('user-uuid'))).toEqual({ kind: 'user', userId: 'user-uuid' });
+    expect(parseOwnerKey('guest:token-value-1234')).toEqual({
+      kind: 'guest',
+      token: 'token-value-1234',
+    });
+  });
 });
