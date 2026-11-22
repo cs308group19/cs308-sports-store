@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  filterByCategory,
+  findProductById,
   isDuplicateCategory,
   isInStock,
   isValidPrice,
@@ -99,5 +101,36 @@ describe('category names', () => {
     expect(isDuplicateCategory(['Football', 'Running'], 'football')).toBe(true);
     expect(isDuplicateCategory(['Football'], '  FOOTBALL ')).toBe(true);
     expect(isDuplicateCategory(['Football'], 'Fitness')).toBe(false);
+  });
+});
+
+describe('category filter and product lookup', () => {
+  const catalogue = [
+    { id: 'p1', categoryId: 'football', stock: 4 },
+    { id: 'p2', categoryId: 'running', stock: 0 },
+    { id: 'p3', categoryId: 'football', stock: 9 },
+  ];
+
+  it('returns only products in the requested category', () => {
+    expect(filterByCategory(catalogue, 'football').map((p) => p.id)).toEqual([
+      'p1',
+      'p3',
+    ]);
+  });
+
+  it('keeps out-of-stock products in the category list', () => {
+    expect(filterByCategory(catalogue, 'running')).toEqual([catalogue[1]]);
+  });
+
+  it('returns an empty list for a category with no products', () => {
+    expect(filterByCategory(catalogue, 'fitness')).toEqual([]);
+  });
+
+  it('finds a product by id', () => {
+    expect(findProductById(catalogue, 'p2')).toEqual(catalogue[1]);
+  });
+
+  it('returns null when the product does not exist', () => {
+    expect(findProductById(catalogue, 'missing')).toBeNull();
   });
 });
