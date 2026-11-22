@@ -20,7 +20,16 @@ export interface ProductLookup {
  */
 export interface CartStore {
   load(ownerKey: string): Promise<CartItem[]>;
-  save(ownerKey: string, items: CartItem[]): Promise<void>;
+  /**
+   * Reads the cart, lets `change` compute the new lines and saves them, as one step: two requests
+   * for the same cart run one after the other, so neither overwrites the other's change. When
+   * `change` throws, nothing is saved and the error is passed on.
+   */
+  update(ownerKey: string, change: CartChange): Promise<CartItem[]>;
 }
+
+export type CartChange = (
+  items: CartItem[],
+) => CartItem[] | Promise<CartItem[]>;
 
 export const MAX_QUANTITY_PER_ITEM = 99;
