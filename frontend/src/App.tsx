@@ -1,12 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import type { Role, Product, CartLine } from "./types/models";
+import type { Role, Product, CartView } from "./types/models";
+import { addCartItem, cartErrorMessage, fetchCart, mergeGuestCart, removeCartItem, setCartQuantity } from "./services/cartApi";
 import { products } from "./services/mockStore";
-import {
-  addCartItem,
-  fetchCart,
-  removeCartItem,
-  setCartItemQuantity,
-} from "./services/cartApi";
 import { type View, roleDefaults, roleNav, staffViews } from "./app/navigation";
 import { useAuth } from "./auth/AuthProvider";
 import type { SessionUser } from "./auth/types";
@@ -41,9 +36,8 @@ export default function App() {
   const [returnTo, setReturnTo] = useState<View>("home");
   const [authOrigin, setAuthOrigin] = useState<View>("home");
   const [selected, setSelected] = useState<Product>(products[0]);
-  const [cart, setCart] = useState<CartLine[]>([]);
+  const [cart, setCart] = useState<CartView>({ items: [], total: 0 });
   const [wishlist, setWishlist] = useState<Product[]>([products[0], products[4]]);
-  const [shopCategory, setShopCategory] = useState("");
   const [toast, setToast] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -89,7 +83,6 @@ export default function App() {
       setAuthOrigin(origin);
       setReturnTo(origin);
     }
-    if (next === "shop") setShopCategory("");
     setView(next);
     window.history.pushState({}, "", next === "login" ? "/auth" : "/");
     setMobileOpen(false);
@@ -115,53 +108,48 @@ export default function App() {
     window.setTimeout(() => setToast(""), 2200);
   };
 
-  // SCRUM-16. The cart lives in the database, keyed by this browser's guest cart token.
+  // Load the cart on page load and after login. A guest cart is merged into the customer cart first.
   useEffect(() => {
+    if (loading) return;
     let cancelled = false;
-    fetchCart()
-      .then((lines) => {
-        if (!cancelled) setCart(lines);
-      })
-      .catch(() => {
-        // The cart page and the add buttons report errors; an empty badge is fine here.
-      });
+    void (async () => {
+      try {
+        if (user) await mergeGuestCart();
+        const view = await fetchCart(Boolean(user));
+        if (!cancelled) setCart(view);
+      } catch (error) {
+        if (!cancelled) notify(cartErrorMessage(error));
+      }
+    })();
     return () => {
       cancelled = true;
     };
-  }, []);
-
-  const errorText = (error: unknown) =>
-    error instanceof Error ? error.message : "Something went wrong. Please try again.";
+    // The cart depends on who is signed in, not on the rest of the user object.
+  }, [loading, user?.id]);
 
   const addToCart = async (product: Product) => {
     try {
-      setCart(await addCartItem(product.id));
+      setCart(await addCartItem(product.id, Boolean(user)));
       notify(`${product.name} added to cart`);
     } catch (error) {
-      notify(errorText(error));
+      notify(cartErrorMessage(error));
     }
   };
 
-  const changeCartQuantity = async (productId: number, quantity: number) => {
+  const changeCartQuantity = async (productId: string, quantity: number) => {
     try {
-      setCart(await setCartItemQuantity(productId, quantity));
+      setCart(await setCartQuantity(productId, quantity, Boolean(user)));
     } catch (error) {
-      notify(errorText(error));
+      notify(cartErrorMessage(error));
     }
   };
 
-  const removeFromCart = async (productId: number) => {
+  const removeFromCart = async (productId: string) => {
     try {
-      setCart(await removeCartItem(productId));
+      setCart(await removeCartItem(productId, Boolean(user)));
     } catch (error) {
-      notify(errorText(error));
+      notify(cartErrorMessage(error));
     }
-  };
-
-  /** Opens the shop on one category (slug from GET /api/categories). */
-  const openCategory = (slug: string) => {
-    navigate("shop");
-    setShopCategory(slug);
   };
 
   const openProduct = (product: Product) => {
@@ -171,18 +159,8 @@ export default function App() {
 
   const screen = (() => {
     if (view === "home")
-      return (
-        <Home
-          navigate={navigate}
-          openCategory={openCategory}
-          openProduct={openProduct}
-          addToCart={addToCart}
-        />
-      );
-    if (view === "shop")
-      return (
-        <Shop openProduct={openProduct} addToCart={addToCart} initialCategory={shopCategory} />
-      );
+      return <Home navigate={navigate} openProduct={openProduct} addToCart={addToCart} />;
+    if (view === "shop") return <Shop openProduct={openProduct} addToCart={addToCart} />;
     if (view === "product")
       return (
         <ProductDetail
@@ -200,7 +178,7 @@ export default function App() {
         <Cart
           cart={cart}
           changeQuantity={changeCartQuantity}
-          remove={removeFromCart}
+          removeItem={removeFromCart}
           navigate={navigate}
         />
       );
@@ -240,7 +218,7 @@ export default function App() {
         nav={roleNav[role]}
         view={view}
         navigate={navigate}
-        cartCount={cart.reduce((sum, line) => sum + line.quantity, 0)}
+        cartCount={cart.items.reduce((sum, line) => sum + line.quantity, 0)}
         mobileOpen={mobileOpen}
         setMobileOpen={setMobileOpen}
       />
