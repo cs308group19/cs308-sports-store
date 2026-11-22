@@ -3,7 +3,7 @@ import type { Category, Product, ProductComment } from "../types/models";
 
 /** One product from GET /api/products (backend/src/products/product-detail.types.ts). */
 export interface ProductSummaryResponse {
-  id: number;
+  id: Product["id"];
   name: string;
   model: string;
   serial: string;
@@ -31,7 +31,7 @@ export interface ProductDetailResponse extends ProductSummaryResponse {
 
 /** Shape of GET /api/categories (backend/src/products/product-list.types.ts). */
 export interface CategorySummary {
-  id: number;
+  id: Product["id"];
   name: Category;
   slug: string;
   productCount: number;
@@ -83,7 +83,7 @@ export async function fetchCategories(): Promise<CategorySummary[]> {
 }
 
 /** SCRUM-14. Public endpoint: works for guests too. */
-export async function fetchProductDetail(id: number): Promise<ProductDetail> {
+export async function fetchProductDetail(id: Product["id"]): Promise<ProductDetail> {
   const response = await apiFetch<ProductDetailResponse>(`/products/${id}`, { auth: false });
   return toProductDetail(response);
 }
