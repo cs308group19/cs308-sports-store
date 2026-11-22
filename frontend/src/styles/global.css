@@ -753,6 +753,8 @@
 .search-box {
   width: min(440px, 60%);
   display: flex;
+  /* The search box is a <label>, and labels stack their children (see the label rule below). */
+  flex-direction: row;
   align-items: center;
   gap: 10px;
   border: 1px solid var(--line);

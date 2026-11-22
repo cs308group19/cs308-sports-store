@@ -1,6 +1,8 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import {
+  MAX_SEARCH_LENGTH,
   parseCategorySlug,
+  parseSearchQuery,
   ProductListService,
 } from './product-list.service.js';
 import { PRODUCT_SUMMARY_SELECT } from './product.select.js';
@@ -62,7 +64,7 @@ describe('ProductListService', () => {
     it('filters by category slug', async () => {
       category.findUnique.mockResolvedValue({ id: 1n });
       product.findMany.mockResolvedValue([]);
-      await service.listProducts('basketball');
+      await service.listProducts({ categorySlug: 'basketball' });
 
       expect(category.findUnique).toHaveBeenCalledWith({
         where: { slug: 'basketball' },
@@ -78,14 +80,16 @@ describe('ProductListService', () => {
     it('returns an empty list for a category with no products', async () => {
       category.findUnique.mockResolvedValue({ id: 1n });
       product.findMany.mockResolvedValue([]);
-      await expect(service.listProducts('gym')).resolves.toEqual([]);
+      await expect(
+        service.listProducts({ categorySlug: 'gym' }),
+      ).resolves.toEqual([]);
     });
 
     it('throws 404 for a category that does not exist', async () => {
       category.findUnique.mockResolvedValue(null);
-      await expect(service.listProducts('curling')).rejects.toBeInstanceOf(
-        NotFoundException,
-      );
+      await expect(
+        service.listProducts({ categorySlug: 'curling' }),
+      ).rejects.toBeInstanceOf(NotFoundException);
       expect(product.findMany).not.toHaveBeenCalled();
     });
 
@@ -97,6 +101,70 @@ describe('ProductListService', () => {
 
     it('never selects the product cost', () => {
       expect(PRODUCT_SUMMARY_SELECT).not.toHaveProperty('cost');
+    });
+  });
+
+  describe('listProducts search (SCRUM-28)', () => {
+    const nameOrDescription = (contains: string) => ({
+      OR: [
+        { name: { contains, mode: 'insensitive' } },
+        { description: { contains, mode: 'insensitive' } },
+      ],
+    });
+
+    it('matches products whose name or description contains every word', async () => {
+      product.findMany.mockResolvedValue([dbRow()]);
+      await service.listProducts({ search: ['court', 'shoe'] });
+
+      expect(product.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            isActive: true,
+            AND: [nameOrDescription('court'), nameOrDescription('shoe')],
+          },
+        }),
+      );
+    });
+
+    it('combines a search with a category filter', async () => {
+      category.findUnique.mockResolvedValue({ id: 1n });
+      product.findMany.mockResolvedValue([]);
+      await service.listProducts({ categorySlug: 'running', search: ['pro'] });
+
+      expect(product.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            isActive: true,
+            category: { slug: 'running' },
+            AND: [nameOrDescription('pro')],
+          },
+        }),
+      );
+    });
+
+    it('escapes LIKE wildcards so they only match themselves', async () => {
+      product.findMany.mockResolvedValue([]);
+      await service.listProducts({ search: ['100%', 'a_b', 'c\\d'] });
+
+      expect(product.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            isActive: true,
+            AND: [
+              nameOrDescription('100\\%'),
+              nameOrDescription('a\\_b'),
+              nameOrDescription('c\\\\d'),
+            ],
+          },
+        }),
+      );
+    });
+
+    it('returns an empty list when nothing matches', async () => {
+      product.findMany.mockResolvedValue([]);
+      await expect(
+        service.listProducts({ search: ['curling'] }),
+      ).resolves.toEqual([]);
     });
   });
 
@@ -146,5 +214,34 @@ describe('parseCategorySlug', () => {
     'a'.repeat(81),
   ])('rejects %j', (raw) => {
     expect(() => parseCategorySlug(raw)).toThrow(BadRequestException);
+  });
+});
+
+describe('parseSearchQuery', () => {
+  it('treats a missing or blank search as no search', () => {
+    expect(parseSearchQuery(undefined)).toBeUndefined();
+    expect(parseSearchQuery('')).toBeUndefined();
+    expect(parseSearchQuery('   ')).toBeUndefined();
+  });
+
+  it('splits the text into lowercase words without repeats', () => {
+    expect(parseSearchQuery('  Trail  RUNNING shoe trail ')).toEqual([
+      'trail',
+      'running',
+      'shoe',
+    ]);
+  });
+
+  it('accepts exactly the maximum length', () => {
+    expect(parseSearchQuery('a'.repeat(MAX_SEARCH_LENGTH))).toHaveLength(1);
+  });
+
+  it.each([
+    ['too long', 'a'.repeat(MAX_SEARCH_LENGTH + 1)],
+    ['too many words', 'a b c d e f g h i'],
+    ['repeated parameter', ['shoe', 'ball']],
+    ['object', { contains: 'x' }],
+  ])('rejects a %s', (_label, raw) => {
+    expect(() => parseSearchQuery(raw)).toThrow(BadRequestException);
   });
 });

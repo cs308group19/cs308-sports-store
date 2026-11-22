@@ -70,10 +70,31 @@ export function toProductDetail(response: ProductDetailResponse): ProductDetail 
   return { ...toProduct(response), comments: response.comments };
 }
 
-/** SCRUM-13. Public endpoint. Pass a category slug to list one category only. */
-export async function fetchProducts(categorySlug?: string): Promise<Product[]> {
-  const query = categorySlug ? `?category=${encodeURIComponent(categorySlug)}` : "";
-  const response = await apiFetch<ProductSummaryResponse[]>(`/products${query}`, { auth: false });
+/** The backend rejects longer searches (backend/src/products/product-list.service.ts). */
+export const MAX_SEARCH_LENGTH = 100;
+
+export interface ProductListOptions {
+  /** Category slug from GET /api/categories. Empty or missing means every category. */
+  category?: string;
+  /** SCRUM-28. Words to find in the product name or description. */
+  search?: string;
+}
+
+/** Builds the GET /api/products path, leaving out every option that is not set. */
+export function productListPath({ category, search }: ProductListOptions = {}): string {
+  const params = new URLSearchParams();
+  if (category) params.set("category", category);
+  const words = search?.trim();
+  if (words) params.set("q", words);
+  const query = params.toString();
+  return query ? `/products?${query}` : "/products";
+}
+
+/** SCRUM-13 and 28. Public endpoint: the category filter and the search happen on the server. */
+export async function fetchProducts(options: ProductListOptions = {}): Promise<Product[]> {
+  const response = await apiFetch<ProductSummaryResponse[]>(productListPath(options), {
+    auth: false,
+  });
   return response.map(toProduct);
 }
 
