@@ -1,12 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { CartLine, Product } from "../types/models";
 import { cartTotals } from "./cartTotals";
 
 /** SCRUM-62 (checkout). The cart page and the checkout page show these amounts. */
-const line = (price: number, quantity: number): CartLine => ({
-  product: { id: price, name: `Item ${price}`, price } as Product,
-  quantity,
-});
+const line = (price: number, quantity: number) => ({ price, quantity });
 
 describe("cartTotals", () => {
   it("costs nothing for an empty cart, not even delivery", () => {

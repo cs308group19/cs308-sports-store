@@ -47,9 +47,20 @@ export interface Order {
   withinReturnWindow?: boolean;
 }
 
-export interface CartLine {
-  product: Product;
+/** A cart line as GET /api/cart and /api/me/cart return it (backend/src/cart/cart.view.ts). */
+export interface CartViewItem {
+  productId: string;
+  name: string;
+  price: number;
+  imageUrl: string | null;
+  stock: number;
   quantity: number;
+  lineTotal: number;
+}
+
+export interface CartView {
+  items: CartViewItem[];
+  total: number;
 }
 
 export interface ChatMessage {

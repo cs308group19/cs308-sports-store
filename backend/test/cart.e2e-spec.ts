@@ -178,28 +178,36 @@ describe('Cart (e2e)', () => {
       expect(invalid.status).toBe(400);
     });
 
-    it('adds a product and returns the cart with product details and totals', async () => {
+    it('adds a product and returns the cart with its discounted price and totals', async () => {
       const res = await server()
         .post('/api/cart/items')
         .set('X-Cart-Token', TOKEN)
-        .send({ productId: 1, quantity: 2 });
+        .send({ productId: '1', quantity: 2 });
 
       expect(res.status).toBe(201);
       expect(res.body.items).toHaveLength(1);
-      expect(res.body.items[0]).toMatchObject({
-        quantity: 2,
-        lineTotal: 254.4,
-        product: { id: 1, name: 'AeroStride Pro', price: 127.2, stock: 5 },
+      // 159.00 with 20% off is 127.20; two cost 254.40.
+      expect(res.body).toEqual({
+        items: [
+          {
+            productId: '1',
+            name: 'AeroStride Pro',
+            price: 127.2,
+            imageUrl: null,
+            stock: 5,
+            quantity: 2,
+            lineTotal: 254.4,
+          },
+        ],
+        total: 254.4,
       });
-      expect(res.body.total).toBe(254.4);
-      expect(res.body.items[0].product).not.toHaveProperty('cost');
     });
 
     it('refuses to add more than the stock', async () => {
       const res = await server()
         .post('/api/cart/items')
         .set('X-Cart-Token', TOKEN)
-        .send({ productId: 1, quantity: 6 });
+        .send({ productId: '1', quantity: 6 });
 
       expect(res.status).toBe(400);
       expect(res.body.message).toBe('Only 5 left in stock.');
@@ -211,7 +219,7 @@ describe('Cart (e2e)', () => {
       const res = await server()
         .post('/api/cart/items')
         .set('X-Cart-Token', TOKEN)
-        .send({ productId: 1 });
+        .send({ productId: '1' });
 
       expect(res.status).toBe(400);
       expect(res.body.message).toBe('This product is out of stock.');
@@ -221,16 +229,18 @@ describe('Cart (e2e)', () => {
       const res = await server()
         .post('/api/cart/items')
         .set('X-Cart-Token', TOKEN)
-        .send({ productId: 999 });
+        .send({ productId: '999' });
 
       expect(res.status).toBe(404);
     });
 
     it.each([
       { productId: 'abc' },
-      { productId: -1 },
-      { productId: 1, quantity: 1.5 },
-      { productId: 1, extra: true },
+      { productId: 1 },
+      { productId: '-1' },
+      { productId: '1', quantity: 1.5 },
+      { productId: '1', quantity: 100 },
+      { productId: '1', extra: true },
     ])('rejects the invalid body %o', async (body) => {
       const res = await server()
         .post('/api/cart/items')
@@ -304,7 +314,7 @@ describe('Cart (e2e)', () => {
       await server()
         .post('/api/me/cart/items')
         .set('Authorization', auth)
-        .send({ productId: 1 })
+        .send({ productId: '1' })
         .expect(201);
       const res = await server()
         .patch('/api/me/cart/items/1')
