@@ -1,3 +1,4 @@
+import { catalogueId } from '../common/id.js';
 import type {
   WarrantyStatus,
   ReviewStatus,
@@ -80,7 +81,7 @@ export function toProductSummary(row: ProductSummaryRow): ProductSummaryResponse
   const price = applyDiscount(listPrice, discountRate);
 
   return {
-    id: Number(row.id),
+    id: catalogueId(row.id),
     name: row.name,
     model: row.model,
     serial: row.serialNumber,

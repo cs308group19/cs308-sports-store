@@ -6,9 +6,9 @@ import { Icon } from "../../components/ui/Icon";
 import { money } from "../../utils/format";
 
 export function Pricing({ notify }: { notify: (s: string) => void }) {
-  const [selectedIds, setSelectedIds] = useState<number[]>([1, 3]);
+  const [selectedIds, setSelectedIds] = useState<Array<number | string>>([1, 3]);
   const [discountRate, setDiscountRate] = useState(20);
-  const toggle = (id: number) =>
+  const toggle = (id: number | string) =>
     setSelectedIds((current) =>
       current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
     );

@@ -1,3 +1,4 @@
+import { catalogueId } from '../common/id.js';
 import {
   BadRequestException,
   Inject,
@@ -148,7 +149,7 @@ export class ProductListService {
       },
     });
     return rows.map((row) => ({
-      id: Number(row.id),
+      id: catalogueId(row.id),
       name: row.name,
       slug: row.slug,
       productCount: row._count.products,
