@@ -50,10 +50,11 @@ The schema is in `../supabase/migrations/`. Prisma only reads it: `prisma/schema
 
 ```bash
 npm run seed:demo                                   # one demo account per role (safe to re-run)
+npm run seed:catalogue                              # demo categories and products (adds missing rows only)
 npm run user:set-role -- someone@example.com sales_manager
 ```
 
-Roles: `customer`, `product_manager`, `sales_manager`, `support_agent`. `set-role` is the only way to create staff; there is no HTTP endpoint for it. `seed:demo` refuses to run when `NODE_ENV=production`.
+Roles: `customer`, `product_manager`, `sales_manager`, `support_agent`. `set-role` is the only way to create staff; there is no HTTP endpoint for it. `seed:demo` and `seed:catalogue` refuse to run when `NODE_ENV=production`. `seed:catalogue` never changes a product that already exists, so re-running it keeps stock and manager edits.
 
 | Role | Email | Password |
 |---|---|---|
@@ -86,6 +87,6 @@ backend/
 │   ├── staff/                  placeholder role-protected endpoints
 │   ├── common/crypto/          AES-256-GCM field encryption
 │   ├── prisma/, supabase/      shared services
-│   └── scripts/                seed:demo and user:set-role
+│   └── scripts/                seed:demo, seed:catalogue and user:set-role
 └── test/                       e2e tests and test helpers
 ```
