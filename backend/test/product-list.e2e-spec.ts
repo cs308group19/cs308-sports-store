@@ -137,7 +137,23 @@ describe('Product list (e2e)', () => {
     );
   });
 
-  it.each([['a search that is too long', `q=${'a'.repeat(101)}`]])(
+  it('sorts by the discounted price (SCRUM-29)', async () => {
+    prisma.product.findMany.mockResolvedValue([
+      row,
+      { ...row, id: 2n, price: '120.00', discountRate: '0.00' },
+    ]);
+    const res = await request(app.getHttpServer())
+      .get('/api/products?sort=price-asc')
+      .expect(200);
+    // 159.00 with 20% off is 127.20, which is more than 120.00.
+    expect(res.body.map((item: { id: number }) => item.id)).toEqual([2, 1]);
+  });
+
+  it.each([
+    ['an unknown sort', 'sort=cheapest'],
+    ['a repeated sort', 'sort=price-asc&sort=price-desc'],
+    ['a search that is too long', `q=${'a'.repeat(101)}`],
+  ])(
     'answers 400 for %s, without touching the database',
     async (_label, query) => {
       await request(app.getHttpServer())

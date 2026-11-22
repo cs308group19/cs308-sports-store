@@ -50,11 +50,30 @@ export function parseSearchQuery(raw: unknown): string[] | undefined {
   return words;
 }
 
-/** Filters for the shop list. Every field is optional. */
+/** SCRUM-29. The orders the shop offers. Price means the price the customer pays (after discount). */
+export const PRODUCT_SORTS = ['popularity', 'price-asc', 'price-desc'] as const;
+export type ProductSort = (typeof PRODUCT_SORTS)[number];
+
+/** Most popular first when no order is given. Rejects an order the shop does not offer. */
+export function parseSort(raw: unknown): ProductSort {
+  if (raw === undefined || raw === '') return 'popularity';
+  if (
+    typeof raw !== 'string' ||
+    !(PRODUCT_SORTS as readonly string[]).includes(raw)
+  ) {
+    throw new BadRequestException(
+      `Sort must be one of: ${PRODUCT_SORTS.join(', ')}.`,
+    );
+  }
+  return raw as ProductSort;
+}
+
+/** Filters and order for the shop list. Every field is optional. */
 export interface ProductListQuery {
   categorySlug?: string;
   /** Lowercase words from parseSearchQuery. */
   search?: string[];
+  sort?: ProductSort;
 }
 
 /** Postgres LIKE treats % and _ as wildcards and a backslash as the escape character. */
@@ -67,13 +86,15 @@ export class ProductListService {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   /**
-   * SCRUM-13 and 28. Every product a customer can see, optionally only one category and only the
-   * ones that match a search, most popular first. Out-of-stock products are still listed (the card
-   * says so); products removed by a manager are not.
+   * SCRUM-13, 28 and 29. Every product a customer can see, optionally only one category and only
+   * the ones that match a search, most popular first or by price. Out-of-stock products are still
+   * listed (the card says so); products removed by a manager are not.
    */
-  async listProducts({ categorySlug, search }: ProductListQuery = {}): Promise<
-    ProductSummaryResponse[]
-  > {
+  async listProducts({
+    categorySlug,
+    search,
+    sort = 'popularity',
+  }: ProductListQuery = {}): Promise<ProductSummaryResponse[]> {
     if (categorySlug !== undefined) {
       const category = await this.prisma.category.findUnique({
         where: { slug: categorySlug },
@@ -105,7 +126,14 @@ export class ProductListService {
       orderBy: [{ popularity: 'desc' }, { id: 'asc' }],
       select: PRODUCT_SUMMARY_SELECT,
     });
-    return rows.map(toProductSummary);
+    const products = rows.map(toProductSummary);
+
+    // The price a customer sees depends on the discount, so it cannot be sorted by the price
+    // column alone. The list is small, and Array.prototype.sort is stable: products with the same
+    // price stay most popular first.
+    if (sort === 'price-asc') products.sort((a, b) => a.price - b.price);
+    if (sort === 'price-desc') products.sort((a, b) => b.price - a.price);
+    return products;
   }
 
   /** SCRUM-13. Categories for the shop sidebar and the home page, with how many products each has. */

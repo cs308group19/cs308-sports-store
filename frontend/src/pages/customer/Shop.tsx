@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import type { Product } from "../../types/models";
 import { Button } from "../../components/ui/Button";
 import { Icon } from "../../components/ui/Icon";
@@ -8,6 +8,7 @@ import {
   fetchCategories,
   fetchProducts,
   MAX_SEARCH_LENGTH,
+  type ProductSort,
 } from "../../services/productApi";
 
 /** Waits this long after the last key press before searching, so typing a word sends one request. */
@@ -16,9 +17,8 @@ const SEARCH_DELAY_MS = 300;
 type LoadState = { status: "loading" } | { status: "ready" } | { status: "error"; message: string };
 
 /**
- * SCRUM-13 and 28. Lists products from GET /api/products. The category filter and the search by
- * name or description run on the server. Sort still runs in the browser until SCRUM-29 moves it
- * to the API.
+ * SCRUM-13, 28 and 29. Lists products from GET /api/products. The category filter, the search
+ * by name or description and the order by price or popularity all run on the server.
  */
 export function Shop({
   openProduct,
@@ -37,7 +37,7 @@ export function Shop({
   const [reloadKey, setReloadKey] = useState(0);
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
-  const [sort, setSort] = useState("popularity");
+  const [sort, setSort] = useState<ProductSort>("popularity");
 
   useEffect(() => setCategory(initialCategory), [initialCategory]);
 
@@ -69,7 +69,7 @@ export function Shop({
   useEffect(() => {
     let cancelled = false;
     setState({ status: "loading" });
-    fetchProducts({ category, search })
+    fetchProducts({ category, search, sort })
       .then((list) => {
         if (cancelled) return;
         setProducts(list);
@@ -86,19 +86,7 @@ export function Shop({
     return () => {
       cancelled = true;
     };
-  }, [category, search, reloadKey]);
-
-  const sorted = useMemo(
-    () =>
-      [...products].sort((a, b) =>
-        sort === "low"
-          ? a.price - b.price
-          : sort === "high"
-            ? b.price - a.price
-            : b.popularity - a.popularity,
-      ),
-    [products, sort],
-  );
+  }, [category, search, sort, reloadKey]);
 
   const totalCount = categories.reduce((sum, item) => sum + item.productCount, 0);
   const activeName = categories.find((item) => item.slug === category)?.name;
@@ -124,12 +112,12 @@ export function Shop({
         </label>
         <select
           value={sort}
-          onChange={(e) => setSort(e.target.value)}
+          onChange={(e) => setSort(e.target.value as ProductSort)}
           aria-label="Sort products"
         >
           <option value="popularity">Most popular</option>
-          <option value="low">Price: low to high</option>
-          <option value="high">Price: high to low</option>
+          <option value="price-asc">Price: low to high</option>
+          <option value="price-desc">Price: high to low</option>
         </select>
       </div>
       <div className="shop-layout">
@@ -173,7 +161,7 @@ export function Shop({
                 </div>
               )}
               <div className="product-grid three">
-                {sorted.map((product) => (
+                {products.map((product) => (
                   <ProductCard
                     key={product.id}
                     product={product}

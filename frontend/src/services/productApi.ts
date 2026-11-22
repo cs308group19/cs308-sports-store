@@ -70,6 +70,9 @@ export function toProductDetail(response: ProductDetailResponse): ProductDetail 
   return { ...toProduct(response), comments: response.comments };
 }
 
+/** SCRUM-29. Orders GET /api/products accepts. Price is the price after the discount. */
+export type ProductSort = "popularity" | "price-asc" | "price-desc";
+
 /** The backend rejects longer searches (backend/src/products/product-list.service.ts). */
 export const MAX_SEARCH_LENGTH = 100;
 
@@ -78,19 +81,21 @@ export interface ProductListOptions {
   category?: string;
   /** SCRUM-28. Words to find in the product name or description. */
   search?: string;
+  sort?: ProductSort;
 }
 
 /** Builds the GET /api/products path, leaving out every option that is not set. */
-export function productListPath({ category, search }: ProductListOptions = {}): string {
+export function productListPath({ category, search, sort }: ProductListOptions = {}): string {
   const params = new URLSearchParams();
   if (category) params.set("category", category);
   const words = search?.trim();
   if (words) params.set("q", words);
+  if (sort && sort !== "popularity") params.set("sort", sort);
   const query = params.toString();
   return query ? `/products?${query}` : "/products";
 }
 
-/** SCRUM-13 and 28. Public endpoint: the category filter and the search happen on the server. */
+/** SCRUM-13, 28 and 29. Public endpoint: filter, search and sort happen on the server. */
 export async function fetchProducts(options: ProductListOptions = {}): Promise<Product[]> {
   const response = await apiFetch<ProductSummaryResponse[]>(productListPath(options), {
     auth: false,

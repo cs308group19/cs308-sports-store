@@ -3,6 +3,7 @@ import {
   MAX_SEARCH_LENGTH,
   parseCategorySlug,
   parseSearchQuery,
+  parseSort,
   ProductListService,
 } from './product-list.service.js';
 import { PRODUCT_SUMMARY_SELECT } from './product.select.js';
@@ -168,6 +169,66 @@ describe('ProductListService', () => {
     });
   });
 
+  describe('listProducts sort (SCRUM-29)', () => {
+    // Already in the database order: most popular first.
+    const rows = [
+      dbRow({ id: 1n, name: 'Popular', price: '100.00', popularity: 99 }),
+      dbRow({
+        id: 2n,
+        name: 'Discounted',
+        price: '200.00',
+        discountRate: '75.00',
+        popularity: 80,
+      }),
+      dbRow({ id: 3n, name: 'Cheap', price: '30.00', popularity: 60 }),
+      dbRow({ id: 4n, name: 'Same price', price: '100.00', popularity: 40 }),
+    ];
+    const names = (list: { name: string }[]) => list.map((item) => item.name);
+
+    beforeEach(() => {
+      product.findMany.mockResolvedValue(rows);
+    });
+
+    it('keeps the database order (most popular first) by default', async () => {
+      const list = await service.listProducts();
+      expect(product.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderBy: [{ popularity: 'desc' }, { id: 'asc' }],
+        }),
+      );
+      expect(names(list)).toEqual([
+        'Popular',
+        'Discounted',
+        'Cheap',
+        'Same price',
+      ]);
+    });
+
+    it('sorts by the price the customer pays, lowest first', async () => {
+      const list = await service.listProducts({ sort: 'price-asc' });
+      // 200.00 with 75% off is 50.00, so it comes before the 100.00 products.
+      expect(list.map((item) => item.price)).toEqual([30, 50, 100, 100]);
+      expect(names(list)).toEqual([
+        'Cheap',
+        'Discounted',
+        'Popular',
+        'Same price',
+      ]);
+    });
+
+    it('sorts by price, highest first', async () => {
+      const list = await service.listProducts({ sort: 'price-desc' });
+      expect(list.map((item) => item.price)).toEqual([100, 100, 50, 30]);
+    });
+
+    it('keeps products with the same price most popular first', async () => {
+      const asc = await service.listProducts({ sort: 'price-asc' });
+      const desc = await service.listProducts({ sort: 'price-desc' });
+      expect(names(asc).slice(2)).toEqual(['Popular', 'Same price']);
+      expect(names(desc).slice(0, 2)).toEqual(['Popular', 'Same price']);
+    });
+  });
+
   describe('listCategories', () => {
     it('returns categories in display order with visible product counts', async () => {
       category.findMany.mockResolvedValue([
@@ -244,4 +305,22 @@ describe('parseSearchQuery', () => {
   ])('rejects a %s', (_label, raw) => {
     expect(() => parseSearchQuery(raw)).toThrow(BadRequestException);
   });
+});
+
+describe('parseSort', () => {
+  it('defaults to most popular', () => {
+    expect(parseSort(undefined)).toBe('popularity');
+    expect(parseSort('')).toBe('popularity');
+  });
+
+  it.each(['popularity', 'price-asc', 'price-desc'])('accepts %s', (sort) => {
+    expect(parseSort(sort)).toBe(sort);
+  });
+
+  it.each(['price', 'PRICE-ASC', 'name', 'cost', ['price-asc', 'price-desc']])(
+    'rejects %j',
+    (raw) => {
+      expect(() => parseSort(raw)).toThrow(BadRequestException);
+    },
+  );
 });
