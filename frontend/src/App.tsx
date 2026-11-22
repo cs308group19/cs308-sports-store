@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import type { Role, Product, CartLine } from "./types/models";
 import { products } from "./services/mockStore";
+import {
+  addCartItem,
+  fetchCart,
+  removeCartItem,
+  setCartItemQuantity,
+} from "./services/cartApi";
 import { type View, roleDefaults, roleNav, staffViews } from "./app/navigation";
 import { useAuth } from "./auth/AuthProvider";
 import type { SessionUser } from "./auth/types";
@@ -35,7 +41,7 @@ export default function App() {
   const [returnTo, setReturnTo] = useState<View>("home");
   const [authOrigin, setAuthOrigin] = useState<View>("home");
   const [selected, setSelected] = useState<Product>(products[0]);
-  const [cart, setCart] = useState<CartLine[]>([{ product: products[2], quantity: 1 }]);
+  const [cart, setCart] = useState<CartLine[]>([]);
   const [wishlist, setWishlist] = useState<Product[]>([products[0], products[4]]);
   const [shopCategory, setShopCategory] = useState("");
   const [toast, setToast] = useState("");
@@ -109,16 +115,47 @@ export default function App() {
     window.setTimeout(() => setToast(""), 2200);
   };
 
-  const addToCart = (product: Product) => {
-    setCart((current) => {
-      const found = current.find((line) => line.product.id === product.id);
-      if (found)
-        return current.map((line) =>
-          line.product.id === product.id ? { ...line, quantity: line.quantity + 1 } : line,
-        );
-      return [...current, { product, quantity: 1 }];
-    });
-    notify(`${product.name} added to cart`);
+  // SCRUM-16. The cart lives in the database, keyed by this browser's guest cart token.
+  useEffect(() => {
+    let cancelled = false;
+    fetchCart()
+      .then((lines) => {
+        if (!cancelled) setCart(lines);
+      })
+      .catch(() => {
+        // The cart page and the add buttons report errors; an empty badge is fine here.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const errorText = (error: unknown) =>
+    error instanceof Error ? error.message : "Something went wrong. Please try again.";
+
+  const addToCart = async (product: Product) => {
+    try {
+      setCart(await addCartItem(product.id));
+      notify(`${product.name} added to cart`);
+    } catch (error) {
+      notify(errorText(error));
+    }
+  };
+
+  const changeCartQuantity = async (productId: number, quantity: number) => {
+    try {
+      setCart(await setCartItemQuantity(productId, quantity));
+    } catch (error) {
+      notify(errorText(error));
+    }
+  };
+
+  const removeFromCart = async (productId: number) => {
+    try {
+      setCart(await removeCartItem(productId));
+    } catch (error) {
+      notify(errorText(error));
+    }
   };
 
   /** Opens the shop on one category (slug from GET /api/categories). */
@@ -158,7 +195,15 @@ export default function App() {
           navigate={navigate}
         />
       );
-    if (view === "cart") return <Cart cart={cart} setCart={setCart} navigate={navigate} />;
+    if (view === "cart")
+      return (
+        <Cart
+          cart={cart}
+          changeQuantity={changeCartQuantity}
+          remove={removeFromCart}
+          navigate={navigate}
+        />
+      );
     if (view === "login")
       return (
         <AuthPage
