@@ -1,3 +1,4 @@
+import { cataloguePhoto } from "./cataloguePhoto";
 import { apiFetch } from "../lib/api";
 import type { Category, Product, ProductComment } from "../types/models";
 
@@ -41,10 +42,6 @@ export interface ProductDetail extends Product {
   comments: ProductComment[];
 }
 
-/** Used when the database has no image for a product yet. */
-export const PLACEHOLDER_IMAGE =
-  "https://images.unsplash.com/photo-1789520482092-bf7a66ef8281?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&q=85&w=900";
-
 export function toProduct(response: ProductSummaryResponse): Product {
   return {
     id: response.id,
@@ -56,7 +53,7 @@ export function toProduct(response: ProductSummaryResponse): Product {
     reviews: response.reviews,
     stock: response.stock,
     popularity: response.popularity,
-    image: response.image ?? PLACEHOLDER_IMAGE,
+    image: response.image?.trim() || cataloguePhoto(response.model),
     model: response.model,
     serial: response.serial,
     warranty: response.warranty,

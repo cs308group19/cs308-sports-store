@@ -1,14 +1,12 @@
 import type { Category, Order, Product } from "../types/models";
 
-const shoeImage =
-  "https://images.unsplash.com/photo-1789520482092-bf7a66ef8281?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&q=85&w=900";
+import { cataloguePhoto } from "./cataloguePhoto";
 
 const productSeeds: Array<
   Omit<
     Product,
     | "id"
     | "image"
-    | "model"
     | "serial"
     | "warranty"
     | "warrantyStatus"
@@ -19,6 +17,7 @@ const productSeeds: Array<
 > = [
   {
     name: "AeroStride Pro",
+    model: "AS-PRO-25",
     category: "Running",
     price: 129,
     oldPrice: 159,
@@ -29,6 +28,7 @@ const productSeeds: Array<
   },
   {
     name: "Court Vision Elite",
+    model: "CV-ELT-25",
     category: "Basketball",
     price: 145,
     rating: 4.7,
@@ -38,6 +38,7 @@ const productSeeds: Array<
   },
   {
     name: "Velocity Knit",
+    model: "VK-25",
     category: "Sneakers",
     price: 99,
     oldPrice: 119,
@@ -48,6 +49,7 @@ const productSeeds: Array<
   },
   {
     name: "Match Pro Football",
+    model: "MP-FB-5",
     category: "Football",
     price: 42,
     rating: 4.9,
@@ -57,6 +59,7 @@ const productSeeds: Array<
   },
   {
     name: "CoreFlex Training Mat",
+    model: "CF-MAT-6",
     category: "Gym",
     price: 39,
     oldPrice: 55,
@@ -67,6 +70,7 @@ const productSeeds: Array<
   },
   {
     name: "HydraLock Bottle",
+    model: "HL-750",
     category: "Accessories",
     price: 24,
     rating: 4.4,
@@ -76,6 +80,7 @@ const productSeeds: Array<
   },
   {
     name: "PowerGrip Gloves",
+    model: "PG-GLV-25",
     category: "Gym",
     price: 29,
     rating: 4.3,
@@ -85,6 +90,7 @@ const productSeeds: Array<
   },
   {
     name: "SprintLite Cap",
+    model: "SL-CAP-25",
     category: "Running",
     price: 22,
     oldPrice: 28,
@@ -98,8 +104,7 @@ const productSeeds: Array<
 export const products: Product[] = productSeeds.map((product, index) => ({
   ...product,
   id: index + 1,
-  image: shoeImage,
-  model: `RLY-${2025 + index}-${String(index + 1).padStart(2, "0")}`,
+  image: cataloguePhoto(product.model),
   serial: `R-${89741 + index * 137}`,
   warranty: index % 2 ? "12 months" : "24 months",
   warrantyStatus: index === 5 ? "Not applicable" : "Active",
