@@ -2,10 +2,12 @@ import { type FormEvent } from "react";
 import type { CartLine } from "../../types/models";
 import { type View } from "../../app/navigation";
 import { Button } from "../../components/ui/Button";
+import { cartTotals } from "../../utils/cartTotals";
 import { money } from "../../utils/format";
 
 export function Checkout({ cart, navigate }: { cart: CartLine[]; navigate: (v: View) => void }) {
-  const total = cart.reduce((sum, l) => sum + l.product.price * l.quantity, 0) * 1.08;
+  // Same amounts as the cart page, delivery included.
+  const { total } = cartTotals(cart);
   const submit = (e: FormEvent) => {
     e.preventDefault();
     navigate("invoice");

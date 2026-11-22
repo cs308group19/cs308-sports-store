@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { CartLine } from "../../types/models";
 import { type View } from "../../app/navigation";
 import { Button } from "../../components/ui/Button";
+import { cartTotals } from "../../utils/cartTotals";
 import { money } from "../../utils/format";
 
 /**
@@ -30,7 +31,7 @@ export function Cart({
     }
   };
 
-  const subtotal = cart.reduce((sum, line) => sum + line.product.price * line.quantity, 0);
+  const { subtotal, delivery, tax, total } = cartTotals(cart);
   return (
     <div className="page narrow">
       <div className="page-heading">
@@ -92,15 +93,15 @@ export function Cart({
           </div>
           <div>
             <span>Delivery</span>
-            <b>{subtotal >= 75 ? "Free" : "$8.00"}</b>
+            <b>{delivery === 0 ? "Free" : money(delivery)}</b>
           </div>
           <div>
             <span>Taxes</span>
-            <b>{money(subtotal * 0.08)}</b>
+            <b>{money(tax)}</b>
           </div>
           <div className="total">
             <span>Total</span>
-            <b>{money(subtotal + subtotal * 0.08 + (subtotal >= 75 ? 0 : 8))}</b>
+            <b>{money(total)}</b>
           </div>
           <Button disabled={!cart.length} onClick={() => navigate("checkout")}>
             Continue to checkout
