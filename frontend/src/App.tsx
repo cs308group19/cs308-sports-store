@@ -37,6 +37,7 @@ export default function App() {
   const [selected, setSelected] = useState<Product>(products[0]);
   const [cart, setCart] = useState<CartLine[]>([{ product: products[2], quantity: 1 }]);
   const [wishlist, setWishlist] = useState<Product[]>([products[0], products[4]]);
+  const [shopCategory, setShopCategory] = useState("");
   const [toast, setToast] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -82,6 +83,7 @@ export default function App() {
       setAuthOrigin(origin);
       setReturnTo(origin);
     }
+    if (next === "shop") setShopCategory("");
     setView(next);
     window.history.pushState({}, "", next === "login" ? "/auth" : "/");
     setMobileOpen(false);
@@ -119,6 +121,12 @@ export default function App() {
     notify(`${product.name} added to cart`);
   };
 
+  /** Opens the shop on one category (slug from GET /api/categories). */
+  const openCategory = (slug: string) => {
+    navigate("shop");
+    setShopCategory(slug);
+  };
+
   const openProduct = (product: Product) => {
     setSelected(product);
     navigate("product");
@@ -126,8 +134,18 @@ export default function App() {
 
   const screen = (() => {
     if (view === "home")
-      return <Home navigate={navigate} openProduct={openProduct} addToCart={addToCart} />;
-    if (view === "shop") return <Shop openProduct={openProduct} addToCart={addToCart} />;
+      return (
+        <Home
+          navigate={navigate}
+          openCategory={openCategory}
+          openProduct={openProduct}
+          addToCart={addToCart}
+        />
+      );
+    if (view === "shop")
+      return (
+        <Shop openProduct={openProduct} addToCart={addToCart} initialCategory={shopCategory} />
+      );
     if (view === "product")
       return (
         <ProductDetail

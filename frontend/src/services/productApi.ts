@@ -1,8 +1,8 @@
 import { apiFetch } from "../lib/api";
 import type { Category, Product, ProductComment } from "../types/models";
 
-/** Shape of GET /api/products/:id (backend/src/products/product-detail.types.ts). */
-export interface ProductDetailResponse {
+/** One product from GET /api/products (backend/src/products/product-detail.types.ts). */
+export interface ProductSummaryResponse {
   id: number;
   name: string;
   model: string;
@@ -22,7 +22,19 @@ export interface ProductDetailResponse {
   popularity: number;
   rating: number;
   reviews: number;
+}
+
+/** Shape of GET /api/products/:id. */
+export interface ProductDetailResponse extends ProductSummaryResponse {
   comments: ProductComment[];
+}
+
+/** Shape of GET /api/categories (backend/src/products/product-list.types.ts). */
+export interface CategorySummary {
+  id: number;
+  name: Category;
+  slug: string;
+  productCount: number;
 }
 
 export interface ProductDetail extends Product {
@@ -33,11 +45,11 @@ export interface ProductDetail extends Product {
 export const PLACEHOLDER_IMAGE =
   "https://images.unsplash.com/photo-1789520482092-bf7a66ef8281?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&q=85&w=900";
 
-export function toProductDetail(response: ProductDetailResponse): ProductDetail {
+export function toProduct(response: ProductSummaryResponse): Product {
   return {
     id: response.id,
     name: response.name,
-    category: response.category as Category,
+    category: response.category,
     price: response.price,
     oldPrice: response.oldPrice,
     rating: response.rating,
@@ -51,8 +63,23 @@ export function toProductDetail(response: ProductDetailResponse): ProductDetail 
     warrantyStatus: response.warrantyStatus,
     distributor: response.distributor,
     description: response.description,
-    comments: response.comments,
   };
+}
+
+export function toProductDetail(response: ProductDetailResponse): ProductDetail {
+  return { ...toProduct(response), comments: response.comments };
+}
+
+/** SCRUM-13. Public endpoint. Pass a category slug to list one category only. */
+export async function fetchProducts(categorySlug?: string): Promise<Product[]> {
+  const query = categorySlug ? `?category=${encodeURIComponent(categorySlug)}` : "";
+  const response = await apiFetch<ProductSummaryResponse[]>(`/products${query}`, { auth: false });
+  return response.map(toProduct);
+}
+
+/** SCRUM-13. Public endpoint: categories in display order with their product counts. */
+export async function fetchCategories(): Promise<CategorySummary[]> {
+  return apiFetch<CategorySummary[]>("/categories", { auth: false });
 }
 
 /** SCRUM-14. Public endpoint: works for guests too. */

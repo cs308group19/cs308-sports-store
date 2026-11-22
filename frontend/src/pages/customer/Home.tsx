@@ -1,20 +1,51 @@
+import { useEffect, useState } from "react";
 import type { Product } from "../../types/models";
-import { products, categories } from "../../services/mockStore";
+import {
+  type CategorySummary,
+  fetchCategories,
+  fetchProducts,
+  PLACEHOLDER_IMAGE,
+} from "../../services/productApi";
 import { type View } from "../../app/navigation";
 import { Button } from "../../components/ui/Button";
 import { Icon } from "../../components/ui/Icon";
 import { ProductCard } from "../../components/ui/ProductCard";
 import { SectionHead } from "../../components/ui/SectionHead";
 
+/** SCRUM-13. Categories and product rows come from the API (most popular first). */
 export function Home({
   navigate,
+  openCategory,
   openProduct,
   addToCart,
 }: {
   navigate: (v: View) => void;
+  openCategory: (slug: string) => void;
   openProduct: (p: Product) => void;
   addToCart: (p: Product) => void;
 }) {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<CategorySummary[]>([]);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([fetchProducts(), fetchCategories()])
+      .then(([productList, categoryList]) => {
+        if (cancelled) return;
+        setProducts(productList);
+        setCategories(categoryList);
+      })
+      .catch(() => {
+        if (!cancelled) setFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const onSale = products.filter((p) => p.oldPrice);
+
   return (
     <>
       <section className="hero">
@@ -31,7 +62,7 @@ export function Home({
           </Button>
         </div>
         <div className="hero-image">
-          <img src={products[0].image} alt="Performance sneakers in a dark studio" />
+          <img src={products[0]?.image ?? PLACEHOLDER_IMAGE} alt="Performance sneakers in a dark studio" />
           <div className="hero-stat">
             <b>4.9/5</b>
             <span>Trusted by 12k+ athletes</span>
@@ -48,12 +79,12 @@ export function Home({
         <div className="category-grid">
           {categories.map((category, i) => (
             <button
-              className={`category-card cat-${i}`}
-              key={category}
-              onClick={() => navigate("shop")}
+              className={`category-card cat-${i % 6}`}
+              key={category.slug}
+              onClick={() => openCategory(category.slug)}
             >
               <span>{String(i + 1).padStart(2, "0")}</span>
-              <strong>{category}</strong>
+              <strong>{category.name}</strong>
               <Icon name="arrow" />
             </button>
           ))}
@@ -61,6 +92,9 @@ export function Home({
       </section>
       <section className="section shade">
         <SectionHead eyebrow="Community favorites" title="Popular right now" />
+        {failed && (
+          <p className="empty">Products could not be loaded. Please try again in a moment.</p>
+        )}
         <div className="product-grid">
           {products.slice(0, 4).map((product) => (
             <ProductCard
@@ -95,16 +129,14 @@ export function Home({
           onAction={() => navigate("shop")}
         />
         <div className="product-grid">
-          {products
-            .filter((p) => p.oldPrice)
-            .map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                openProduct={openProduct}
-                addToCart={addToCart}
-              />
-            ))}
+          {onSale.map((product) => (
+            <ProductCard
+              key={product.id}
+              product={product}
+              openProduct={openProduct}
+              addToCart={addToCart}
+            />
+          ))}
         </div>
       </section>
     </>

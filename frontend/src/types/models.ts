@@ -1,5 +1,6 @@
 export type Role = "Customer" | "Product Manager" | "Sales Manager" | "Support Agent";
-export type Category = "Basketball" | "Football" | "Running" | "Gym" | "Sneakers" | "Accessories";
+/** Category names come from the database (GET /api/categories), so any name is allowed. */
+export type Category = string;
 export type OrderStatus = "Processing" | "In transit" | "Delivered";
 
 export interface Product {
