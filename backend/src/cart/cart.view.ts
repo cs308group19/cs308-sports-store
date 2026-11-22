@@ -1,14 +1,18 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { applyDiscount, toNumber } from '../common/money.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { toProductSummary } from '../products/product-detail.mapper.js';
-import type { ProductSummaryResponse } from '../products/product-detail.types.js';
-import { PRODUCT_SUMMARY_SELECT } from '../products/product.select.js';
 import { cartOwnerWhere } from './cart.owner.js';
 
+/** One cart line as the cart and checkout pages show it (frontend CartViewItem). */
 export interface CartLineResponse {
-  product: ProductSummaryResponse;
+  productId: string;
+  name: string;
+  /** The price the customer pays: the list price after the product's discount. */
+  price: number;
+  imageUrl: string | null;
+  stock: number;
   quantity: number;
-  /** The product's price after discount times the quantity. */
+  /** price × quantity. */
   lineTotal: number;
 }
 
@@ -22,8 +26,8 @@ export interface CartResponse {
 const toCents = (amount: number) => Math.round(amount * 100);
 
 /**
- * Reads a cart with the product details the cart page shows (same fields as the shop list), the
- * total of each line and of the whole cart. Prices are the discounted prices the shop shows.
+ * SCRUM-16 and SCRUM-17. Reads a cart with the name, discounted price, image and stock of each
+ * product, the total of each line and of the whole cart. Totals are added up in cents.
  */
 @Injectable()
 export class CartViewService {
@@ -38,7 +42,17 @@ export class CartViewService {
           orderBy: { id: 'asc' },
           select: {
             quantity: true,
-            product: { select: { ...PRODUCT_SUMMARY_SELECT, isActive: true } },
+            product: {
+              select: {
+                id: true,
+                name: true,
+                price: true,
+                discountRate: true,
+                imageUrl: true,
+                stockQuantity: true,
+                isActive: true,
+              },
+            },
           },
         },
       },
@@ -47,12 +61,19 @@ export class CartViewService {
     const items = (cart?.items ?? [])
       // A product a manager removed from the store is no longer for sale.
       .filter((item) => item.product.isActive)
-      .map((item) => {
-        const product = toProductSummary(item.product);
+      .map(({ product, quantity }) => {
+        const price = applyDiscount(
+          toNumber(product.price),
+          toNumber(product.discountRate),
+        );
         return {
-          product,
-          quantity: item.quantity,
-          lineTotal: (toCents(product.price) * item.quantity) / 100,
+          productId: product.id.toString(),
+          name: product.name,
+          price,
+          imageUrl: product.imageUrl,
+          stock: product.stockQuantity,
+          quantity,
+          lineTotal: (toCents(price) * quantity) / 100,
         };
       });
     const totalCents = items.reduce(

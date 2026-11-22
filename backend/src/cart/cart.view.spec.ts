@@ -1,5 +1,4 @@
 import type { PrismaService } from '../prisma/prisma.service.js';
-import { PRODUCT_SUMMARY_SELECT } from '../products/product.select.js';
 import { CartViewService } from './cart.view.js';
 
 /** SCRUM-16 and SCRUM-17. What the cart page receives after loading or changing the cart. */
@@ -8,20 +7,10 @@ const TOKEN = '3f2b8c1e-5d4a-4f6b-9a7c-1e2d3c4b5a69';
 const productRow = (overrides: Record<string, unknown> = {}) => ({
   id: 3n,
   name: 'Court Vision Elite',
-  model: 'RLY-2026-02',
-  serialNumber: 'R-89878',
-  description: 'Basketball shoe',
-  stockQuantity: 8,
   price: '145.00',
   discountRate: '20.00',
-  warrantyStatus: 'active',
-  warrantyTerm: '12 months',
-  distributor: 'Peak Performance Ltd.',
-  imageUrl: null,
-  popularity: 94,
-  averageRating: '4.70',
-  reviewCount: 89,
-  category: { name: 'Basketball', slug: 'basketball' },
+  imageUrl: 'court.webp',
+  stockQuantity: 8,
   isActive: true,
   ...overrides,
 });
@@ -33,7 +22,7 @@ function setup() {
 }
 
 describe('CartViewService', () => {
-  it('returns an empty cart for an owner who has none yet', async () => {
+  it('returns an empty cart with total zero for an owner who has none yet', async () => {
     const { cart, service } = setup();
     cart.findUnique.mockResolvedValue(null);
 
@@ -48,18 +37,14 @@ describe('CartViewService', () => {
     cart.findUnique.mockResolvedValue({ items: [] });
     await service.view(`guest:${TOKEN}`);
 
-    expect(cart.findUnique).toHaveBeenCalledWith({
-      where: { guestToken: TOKEN },
-      select: {
-        items: {
-          orderBy: { id: 'asc' },
-          select: {
-            quantity: true,
-            product: { select: { ...PRODUCT_SUMMARY_SELECT, isActive: true } },
-          },
+    expect(cart.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { guestToken: TOKEN },
+        select: {
+          items: expect.objectContaining({ orderBy: { id: 'asc' } }),
         },
-      },
-    });
+      }),
+    );
   });
 
   it('reads a signed-in customer’s cart by user id', async () => {
@@ -74,56 +59,41 @@ describe('CartViewService', () => {
     );
   });
 
-  it('returns each line with the shop fields and the discounted price', async () => {
+  it('never reads the product cost', async () => {
+    const { cart, service } = setup();
+    cart.findUnique.mockResolvedValue({ items: [] });
+    await service.view(`guest:${TOKEN}`);
+
+    const [{ select }] = cart.findUnique.mock.calls[0] as [
+      { select: { items: { select: { product: { select: object } } } } },
+    ];
+    expect(select.items.select.product.select).not.toHaveProperty('cost');
+  });
+
+  it('returns each line with the discounted price, the line total and the cart total', async () => {
     const { cart, service } = setup();
     cart.findUnique.mockResolvedValue({
       items: [{ quantity: 2, product: productRow() }],
     });
-    const { items } = await service.view(`guest:${TOKEN}`);
 
-    expect(items).toHaveLength(1);
-    expect(items[0].quantity).toBe(2);
     // 145.00 with 20% off is 116.00, so two cost 232.00.
-    expect(items[0].lineTotal).toBe(232);
-    expect(items[0].product).toMatchObject({
-      id: 3,
-      name: 'Court Vision Elite',
-      price: 116,
-      oldPrice: 145,
-      stock: 8,
-      inStock: true,
-    });
-    expect(items[0].product).not.toHaveProperty('cost');
-    expect(items[0].product).not.toHaveProperty('isActive');
-  });
-
-  it('hides products a manager removed from the store', async () => {
-    const { cart, service } = setup();
-    cart.findUnique.mockResolvedValue({
+    await expect(service.view(`guest:${TOKEN}`)).resolves.toEqual({
       items: [
-        { quantity: 1, product: productRow({ id: 1n, isActive: false }) },
         {
-          quantity: 4,
-          product: productRow({ id: 2n, name: 'Still for sale' }),
+          productId: '3',
+          name: 'Court Vision Elite',
+          price: 116,
+          imageUrl: 'court.webp',
+          stock: 8,
+          quantity: 2,
+          lineTotal: 232,
         },
       ],
+      total: 232,
     });
-    const { items } = await service.view(`guest:${TOKEN}`);
-
-    expect(items.map((item) => item.product.name)).toEqual(['Still for sale']);
   });
 
-  it('keeps a line whose product sold out, marked as out of stock', async () => {
-    const { cart, service } = setup();
-    cart.findUnique.mockResolvedValue({
-      items: [{ quantity: 1, product: productRow({ stockQuantity: 0 }) }],
-    });
-    const { items } = await service.view(`guest:${TOKEN}`);
-
-    expect(items[0].product).toMatchObject({ stock: 0, inStock: false });
-  });
-
-  it('adds up the discounted line totals into the cart total, in cents', async () => {
+  it('adds up the line totals in cents', async () => {
     const { cart, service } = setup();
     const plain = (id: bigint, price: string) =>
       productRow({ id, price, discountRate: '0.00' });
@@ -141,21 +111,36 @@ describe('CartViewService', () => {
     expect(view.total).toBe(81.3);
   });
 
-  it('leaves removed products out of the total', async () => {
+  it('hides products a manager removed from the store, and leaves them out of the total', async () => {
     const { cart, service } = setup();
     cart.findUnique.mockResolvedValue({
       items: [
         { quantity: 1, product: productRow({ id: 1n, isActive: false }) },
         {
           quantity: 1,
-          product: productRow({ id: 2n, price: '12.00', discountRate: '0.00' }),
+          product: productRow({
+            id: 2n,
+            name: 'Still for sale',
+            price: '12.00',
+            discountRate: '0.00',
+          }),
         },
       ],
     });
+    const view = await service.view(`guest:${TOKEN}`);
 
-    await expect(service.view(`guest:${TOKEN}`)).resolves.toMatchObject({
-      total: 12,
+    expect(view.items.map((item) => item.name)).toEqual(['Still for sale']);
+    expect(view.total).toBe(12);
+  });
+
+  it('keeps a line whose product sold out, with its stock at zero', async () => {
+    const { cart, service } = setup();
+    cart.findUnique.mockResolvedValue({
+      items: [{ quantity: 1, product: productRow({ stockQuantity: 0 }) }],
     });
+    const { items } = await service.view(`guest:${TOKEN}`);
+
+    expect(items[0]).toMatchObject({ stock: 0, quantity: 1 });
   });
 
   it('rejects an unknown owner key before touching the database', async () => {

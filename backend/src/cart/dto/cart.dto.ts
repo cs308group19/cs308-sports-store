@@ -1,18 +1,28 @@
-import { IsInt, IsOptional, IsPositive } from 'class-validator';
+import {
+  IsInt,
+  IsOptional,
+  IsString,
+  Matches,
+  Max,
+  Min,
+} from 'class-validator';
+import { MAX_QUANTITY_PER_ITEM } from '../cart.types.js';
 
-/** POST /api/cart/items and /api/me/cart/items. The service checks the quantity range and stock. */
 export class AddCartItemDto {
-  @IsInt()
-  @IsPositive()
-  productId!: number;
+  @IsString()
+  @Matches(/^\d+$/, { message: 'productId must be a product id.' })
+  productId!: string;
 
   @IsOptional()
   @IsInt()
+  @Min(1)
+  @Max(MAX_QUANTITY_PER_ITEM)
   quantity?: number;
 }
 
-/** PATCH /api/cart/items/:productId and /api/me/cart/items/:productId */
 export class UpdateCartQuantityDto {
   @IsInt()
+  @Min(1)
+  @Max(MAX_QUANTITY_PER_ITEM)
   quantity!: number;
 }
