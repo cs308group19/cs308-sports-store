@@ -753,6 +753,8 @@
 .search-box {
   width: min(440px, 60%);
   display: flex;
+  /* The search box is a <label>, and labels stack their children (see the label rule below). */
+  flex-direction: row;
   align-items: center;
   gap: 10px;
   border: 1px solid var(--line);
@@ -1050,7 +1052,7 @@ textarea:focus {
 .auth-art {
   background:
     linear-gradient(#071a33dd, #071a33dd),
-    url("https://images.unsplash.com/photo-1789520482092-bf7a66ef8281?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&q=85&w=1200")
+    url("/images/basketball-court.webp")
       center/cover;
   color: white;
   display: flex;

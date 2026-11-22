@@ -1,15 +1,24 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import type { Product } from "../../types/models";
 import { Button } from "../../components/ui/Button";
 import { Icon } from "../../components/ui/Icon";
 import { ProductCard } from "../../components/ui/ProductCard";
-import { type CategorySummary, fetchCategories, fetchProducts } from "../../services/productApi";
+import {
+  type CategorySummary,
+  fetchCategories,
+  fetchProducts,
+  MAX_SEARCH_LENGTH,
+  type ProductSort,
+} from "../../services/productApi";
+
+/** Waits this long after the last key press before searching, so typing a word sends one request. */
+const SEARCH_DELAY_MS = 300;
 
 type LoadState = { status: "loading" } | { status: "ready" } | { status: "error"; message: string };
 
 /**
- * SCRUM-13. Lists products from GET /api/products, filtered by category on the server.
- * Search and sort still run in the browser until SCRUM-28 and SCRUM-29 move them to the API.
+ * SCRUM-13, 28 and 29. Lists products from GET /api/products. The category filter, the search
+ * by name or description and the order by price or popularity all run on the server.
  */
 export function Shop({
   openProduct,
@@ -27,9 +36,21 @@ export function Shop({
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [reloadKey, setReloadKey] = useState(0);
   const [query, setQuery] = useState("");
-  const [sort, setSort] = useState("popularity");
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<ProductSort>("popularity");
 
   useEffect(() => setCategory(initialCategory), [initialCategory]);
+
+  // Search once the customer stops typing. Clearing the box shows every product right away.
+  useEffect(() => {
+    const words = query.trim();
+    if (!words) {
+      setSearch("");
+      return;
+    }
+    const timer = window.setTimeout(() => setSearch(words), SEARCH_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [query]);
 
   useEffect(() => {
     let cancelled = false;
@@ -48,7 +69,7 @@ export function Shop({
   useEffect(() => {
     let cancelled = false;
     setState({ status: "loading" });
-    fetchProducts(category || undefined)
+    fetchProducts({ category, search, sort })
       .then((list) => {
         if (cancelled) return;
         setProducts(list);
@@ -65,21 +86,7 @@ export function Shop({
     return () => {
       cancelled = true;
     };
-  }, [category, reloadKey]);
-
-  const filtered = useMemo(
-    () =>
-      products
-        .filter((p) => `${p.name} ${p.description}`.toLowerCase().includes(query.toLowerCase()))
-        .sort((a, b) =>
-          sort === "low"
-            ? a.price - b.price
-            : sort === "high"
-              ? b.price - a.price
-              : b.popularity - a.popularity,
-        ),
-    [products, query, sort],
-  );
+  }, [category, search, sort, reloadKey]);
 
   const totalCount = categories.reduce((sum, item) => sum + item.productCount, 0);
   const activeName = categories.find((item) => item.slug === category)?.name;
@@ -95,15 +102,22 @@ export function Shop({
         <label className="search-box">
           <Icon name="search" />
           <input
+            type="search"
             value={query}
+            maxLength={MAX_SEARCH_LENGTH}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search name or description..."
+            aria-label="Search products by name or description"
           />
         </label>
-        <select value={sort} onChange={(e) => setSort(e.target.value)}>
+        <select
+          value={sort}
+          onChange={(e) => setSort(e.target.value as ProductSort)}
+          aria-label="Sort products"
+        >
           <option value="popularity">Most popular</option>
-          <option value="low">Price: low to high</option>
-          <option value="high">Price: high to low</option>
+          <option value="price-asc">Price: low to high</option>
+          <option value="price-desc">Price: high to low</option>
         </select>
       </div>
       <div className="shop-layout">
@@ -134,20 +148,20 @@ export function Shop({
           ) : (
             <>
               <div className="result-count">
-                {state.status === "loading" ? "Loading products..." : `${filtered.length} products`}
+                {state.status === "loading" ? "Loading products..." : `${products.length} products`}
               </div>
-              {state.status === "ready" && filtered.length === 0 && (
+              {state.status === "ready" && products.length === 0 && (
                 <div className="empty">
                   <h2>No products found</h2>
                   <p>
-                    {query
+                    {search
                       ? "Try a different search."
                       : "There are no products in this category yet."}
                   </p>
                 </div>
               )}
               <div className="product-grid three">
-                {filtered.map((product) => (
+                {products.map((product) => (
                   <ProductCard
                     key={product.id}
                     product={product}
