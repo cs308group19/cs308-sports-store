@@ -10,7 +10,6 @@ import { CryptoModule } from './common/crypto/crypto.module.js';
 import { type Env, validateEnv } from './config/env.js';
 import { HealthController } from './health/health.controller.js';
 import { PrismaModule } from './prisma/prisma.module.js';
-import { ProductDetailModule } from './products/product-detail.module.js';
 import { StaffController } from './staff/staff.controller.js';
 import { SupabaseModule } from './supabase/supabase.module.js';
 import { UsersModule } from './users/users.module.js';
@@ -24,7 +23,6 @@ import { UsersModule } from './users/users.module.js';
     SupabaseModule,
     UsersModule,
     AuthModule,
-    ProductDetailModule,
   ],
   controllers: [HealthController, StaffController],
   providers: [
