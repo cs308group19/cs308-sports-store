@@ -46,16 +46,16 @@ Checkout, invoices, order history, delivery, popularity and reviews all use the 
 4. `products.stock_quantity`: decreased with a conditional update if there is enough stock; otherwise the whole transaction is rolled back.
 5. `products.popularity`: increased by the quantity sold.
 6. `deliveries`: one row per order item, status `processing`.
-7. `invoices`: invoice number, billed-to name and address, amounts, `email_status = 'pending'`.
+7. `invoices`: invoice number, billed-to name and address copied from the confirmed checkout delivery details, amounts, `email_status = 'pending'`.
 8. The customer's cart is emptied.
 
 The PDF and the email are produced after the transaction commits. A failed email does not undo the order.
 
 **On a declined payment** nothing is written, stock and cart stay as they were, and the customer sees an error message.
 
-**Amounts** are calculated on the server; prices sent by the client are not trusted. The rules match `utils/cartTotals.ts`: the subtotal uses the prices paid, orders under 75 pay a delivery fee of 8, tax is 8% of the subtotal, and everything is worked out in cents. `orders` and `invoices` have no column for the delivery fee, so the SCRUM-22/23/24 PR adds a `delivery_fee` column through a migration.
+**Amounts** are calculated on the server; prices sent by the client are not trusted. The rules match `utils/cartTotals.ts`: the subtotal uses the prices paid, a non-empty cart with a subtotal under 75 pays a delivery fee of 8 even when fully discounted, tax is 8% of the subtotal, and everything is worked out in cents. The SCRUM-22/23/24 migration adds `delivery_fee` to `orders` and `invoices`.
 
-**The mock bank** decides by card number. `4242 4242 4242 4242`, which passes the Luhn check, is approved and `4000 0000 0000 0002` is declined. The demo uses only these fictional numbers.
+**The mock bank** approves only `4242 4242 4242 4242`. Other valid numbers are declined, including `4000 0000 0000 0002`. The demo uses only these fictional numbers.
 
 **Statuses** only move forward: `processing` → `in_transit` → `delivered`. An order's status is that of its least advanced delivery row. The order becomes `delivered`, and `orders.delivered_at` is set, when its last item is delivered. Ratings and comments are per order item: that item's delivery row must be `delivered`.
 
@@ -63,7 +63,7 @@ The PDF and the email are produced after the transaction commits. A failed email
 
 | Purpose | Endpoint | Card |
 |---|---|---|
-| Payment and order | `POST /api/me/checkout` → `201 { orderId, orderNumber, invoiceId }`, declined `402`, not enough stock `409` | SCRUM-22/23/24 |
+| Payment and order | `POST /api/me/checkout` → `201 { orderId, orderNumber, invoiceId }`, declined `402`, stale cart or insufficient stock `409` | SCRUM-22/23/24 |
 | Order history | `GET /api/me/orders` | SCRUM-27 |
 | Invoice and PDF | `GET /api/me/invoices/:id`, `GET /api/me/invoices/:id/pdf` | SCRUM-25/26 |
 | Delivery list and status | `GET /api/staff/deliveries`, `PATCH /api/staff/deliveries/:id` | SCRUM-34 |
@@ -80,7 +80,7 @@ Errors use NestJS's default `{ statusCode, message, error }` shape. A record tha
 |---|---|
 | [SCRUM-22](https://project308.atlassian.net/browse/SCRUM-22) | The return after login is in `main`. Cardholder, number (Luhn), expiry date (not in the past) and CVV (3–4 digits) are validated both in the form and in the backend DTO. The delivery address is prefilled from the profile. Evidence: a guest logs in with a cart and returns to checkout with the same cart. A test shows the card number and CVV appear in no record, log or response. |
 | [SCRUM-23](https://project308.atlassian.net/browse/SCRUM-23) | The mock bank approves and declines with the numbers in the contract. On approval, every record in the contract is written and the response carries `orderId` and `invoiceId`. On decline, the customer sees an error. `npm run test:database` verifies that row counts, stock and cart are unchanged after a decline. |
-| [SCRUM-24](https://project308.atlassian.net/browse/SCRUM-24) | The stock check and decrease happen inside the order transaction. Not enough stock returns `409` and writes nothing. A test on a real PostgreSQL shows that when two customers buy the last item at the same time, only one succeeds. The `delivery_fee` migration and Prisma model are also in this PR. |
+| [SCRUM-24](https://project308.atlassian.net/browse/SCRUM-24) | The stock check and decrease happen inside the order transaction. Insufficient stock or a mismatch with the cart and amounts reviewed by the customer returns `409` and writes nothing. Checkout reloads the cart for the customer to review. Real PostgreSQL tests cover competing purchases of the last item and stale cart quantities or prices. The `delivery_fee` migration and Prisma model are also in this PR. |
 
 ### Invoices and delivery — Rayen
 
