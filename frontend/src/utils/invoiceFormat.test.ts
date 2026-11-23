@@ -33,7 +33,12 @@ describe("formatDiscount", () => {
 
 describe("formatInvoiceDate", () => {
   it("writes the month in words", () => {
-    expect(formatInvoiceDate("2026-11-24T12:00:00Z")).toMatch(/^November 2[34], 2026$/);
+    expect(formatInvoiceDate("2026-11-24T12:00:00Z")).toBe("November 24, 2026");
+  });
+
+  it("uses the store's time zone, not the viewer's", () => {
+    // 22:30 UTC is already the next day in Istanbul (UTC+3).
+    expect(formatInvoiceDate("2026-11-24T22:30:00Z")).toBe("November 25, 2026");
   });
 });
 

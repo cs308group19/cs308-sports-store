@@ -13,12 +13,13 @@ export function formatDiscount(rate: number): string {
   return rate > 0 ? `${Number(rate.toFixed(2))}%` : "—";
 }
 
-/** "November 24, 2026". The date is shown in the viewer's time zone. */
+/** "November 24, 2026", in the store's time zone, so the page shows the same date as the PDF. */
 export function formatInvoiceDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",
+    timeZone: "Europe/Istanbul",
   });
 }
 
