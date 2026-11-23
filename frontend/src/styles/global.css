@@ -1340,9 +1340,13 @@ label textarea {
 .invoice-table {
   margin-top: 24px;
 }
+.invoice-table .num,
+.invoice-table td:nth-child(2),
+.invoice-table td:nth-child(3) {
+  white-space: nowrap;
+}
 .invoice-table .num {
   text-align: right;
-  white-space: nowrap;
 }
 .invoice-totals {
   margin-left: auto;
