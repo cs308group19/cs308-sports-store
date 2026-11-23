@@ -1,9 +1,18 @@
-import { Inject, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { catalogueId } from '../common/id.js';
 import { toNumber } from '../common/money.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { DeliveryRow } from './deliveries.types.js';
-import type { DeliveryStep } from './delivery.rules.js';
+import {
+  checkTransition,
+  type DeliveryStep,
+  OrderStatus,
+} from './delivery.rules.js';
 
 /** What the list needs from a delivery, with its order number and product name. */
 export const deliverySelect = {
@@ -76,5 +85,46 @@ export class DeliveriesService {
       select: deliverySelect,
     });
     return rows.map(toDeliveryRow);
+  }
+
+  /**
+   * Moves one delivery forward. The update is conditional on the status that was read, so a
+   * second manager who changed the row in between makes this one fail with a 409 instead of
+   * overwriting it.
+   */
+  async updateStatus(id: bigint, next: OrderStatus): Promise<DeliveryRow> {
+    return this.prisma.$transaction(async (tx) => {
+      const current = await tx.delivery.findUnique({
+        where: { id },
+        select: { status: true },
+      });
+      if (!current) throw new NotFoundException('Delivery not found.');
+
+      const check = checkTransition(current.status, next);
+      if (!check.allowed) throw new ConflictException(check.reason);
+
+      const now = new Date();
+      const done = next === OrderStatus.delivered;
+      const { count } = await tx.delivery.updateMany({
+        where: { id, status: current.status },
+        data: {
+          status: next,
+          isCompleted: done,
+          ...(done ? { deliveredAt: now } : {}),
+          updatedAt: now,
+        },
+      });
+      if (count === 0) {
+        throw new ConflictException(
+          'This delivery was changed by someone else. Refresh the list and try again.',
+        );
+      }
+
+      const row = await tx.delivery.findUniqueOrThrow({
+        where: { id },
+        select: deliverySelect,
+      });
+      return toDeliveryRow(row);
+    });
   }
 }
