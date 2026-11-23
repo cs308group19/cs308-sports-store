@@ -1,12 +1,17 @@
 import {
   BadRequestException,
+  Body,
   Controller,
   Get,
   Inject,
+  Param,
+  Patch,
   Query,
 } from '@nestjs/common';
+import { parseId } from '../common/id.js';
 import { Roles } from '../auth/decorators.js';
 import { UserRole } from '../auth/roles.js';
+import { UpdateDeliveryStatusDto } from './deliveries.dto.js';
 import { DeliveriesService } from './deliveries.service.js';
 import { type DeliveryStep, isDeliveryStep } from './delivery.rules.js';
 
@@ -33,5 +38,14 @@ export class DeliveriesController {
   @Get()
   list(@Query('status') status?: unknown) {
     return this.deliveries.list(parseStatusFilter(status));
+  }
+
+  /** PATCH /api/staff/deliveries/12 with { "status": "in_transit" } */
+  @Patch(':id')
+  updateStatus(@Param('id') id: string, @Body() body: UpdateDeliveryStatusDto) {
+    return this.deliveries.updateStatus(
+      parseId(id, 'delivery id'),
+      body.status,
+    );
   }
 }
