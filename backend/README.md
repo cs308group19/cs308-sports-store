@@ -5,6 +5,7 @@ NestJS API for the CS308 online store (Team 19). It verifies Supabase logins, en
 ## What exists so far
 
 - **Auth and users only.** `POST /api/auth/register`, `GET /api/auth/me`, `GET /api/health`, plus three placeholder endpoints under `/api/staff/*` that show how roles are enforced.
+- **Invoices (SCRUM-25, SCRUM-26).** `GET /api/me/invoices/:id` returns the signed-in customer's invoice, built from the records saved at order time. `GET /api/me/invoices/:id/pdf` returns the same invoice as a PDF download. Another customer's invoice, or one that does not exist, answers `404`. After checkout commits, `InvoicesService.sendInvoiceEmail(invoiceId)` emails the PDF and records `email_status` (`sent` or `failed`) on the invoice; it never throws.
 - Login happens in the browser against Supabase Auth. The browser then sends the access token to this API as `Authorization: Bearer <token>`.
 
 ## How authentication works
@@ -34,6 +35,7 @@ npm run start:dev      # http://localhost:3000/api
 | `FIELD_ENCRYPTION_KEY` | `openssl rand -base64 32`. Share it with the team through a safe channel; if it is lost, stored tax IDs cannot be read |
 | `TRUST_PROXY` | Optional. Leave empty locally. When the API runs behind a reverse proxy or load balancer, set the number of proxy hops (usually `1`); otherwise every client shares the proxy's IP and one rate limit. `true` is refused because it would let clients fake their IP |
 | `SUPABASE_JWT_SECRET` | Optional, legacy only. See step 4 below |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Optional. Where the invoice email goes. The default is a local [Mailpit](https://mailpit.axllent.org) (`localhost:1025`, no login, read the mail at http://localhost:8025). For [Ethereal](https://ethereal.email) put its test account here. Set `SMTP_USER` and `SMTP_PASS` together or not at all. Never commit a real password |
 
 ### One-time Supabase dashboard settings
 
@@ -86,6 +88,7 @@ backend/
 │   ├── auth/                   JWT guard, roles guard, decorators, register/me endpoints
 │   ├── users/                  create account, set role (Supabase admin API + Prisma)
 │   ├── staff/                  placeholder role-protected endpoints
+│   ├── invoices/               invoice endpoints, PDF (pdfkit) and email (nodemailer)
 │   ├── common/crypto/          AES-256-GCM field encryption
 │   ├── prisma/, supabase/      shared services
 │   └── scripts/                seed:demo, seed:catalogue and user:set-role

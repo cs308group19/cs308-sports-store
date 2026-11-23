@@ -1313,6 +1313,58 @@ label textarea {
   border-top: 2px solid var(--navy);
   font-size: 17px;
 }
+.invoice-seller {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+.invoice-seller .brand {
+  margin-bottom: 8px;
+}
+.invoice-seller span {
+  color: var(--muted);
+}
+.invoice-head > .invoice-id {
+  align-items: flex-end;
+  text-align: right;
+  font-size: 12px;
+}
+.invoice-id span {
+  color: var(--muted);
+}
+.invoice-id .invoice-paid {
+  color: var(--green);
+  margin-top: 6px;
+}
+.invoice-table {
+  margin-top: 24px;
+}
+.invoice-table .num,
+.invoice-table td:nth-child(2),
+.invoice-table td:nth-child(3) {
+  white-space: nowrap;
+}
+.invoice-table .num {
+  text-align: right;
+}
+.invoice-totals {
+  margin-left: auto;
+  width: min(100%, 320px);
+  margin-top: 16px;
+}
+.invoice-foot {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.7;
+  text-align: left;
+}
+.invoice-page > p[role="alert"] {
+  color: #b73737;
+}
 .center-actions {
   display: flex;
   justify-content: center;
@@ -2606,5 +2658,46 @@ footer {
   .footer-bottom {
     flex-direction: column;
     gap: 8px;
+  }
+}
+
+/* Print: the invoice alone on a clean page. */
+@media print {
+  .header,
+  footer,
+  .chat-fab,
+  .support-widget,
+  .toast,
+  .center-actions,
+  .success-mark,
+  .invoice-page > .eyebrow,
+  .invoice-page > h1,
+  .invoice-page > p {
+    display: none !important;
+  }
+  body,
+  .app {
+    background: white;
+  }
+  .page,
+  .invoice-page {
+    max-width: none;
+    padding: 0;
+    margin: 0;
+  }
+  .invoice {
+    border: 0;
+    margin: 0;
+    padding: 0;
+  }
+  .invoice-table {
+    border-color: #999;
+    overflow: visible;
+  }
+  .invoice-table thead {
+    display: table-header-group;
+  }
+  .invoice-table tr {
+    break-inside: avoid;
   }
 }
