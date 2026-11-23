@@ -17,3 +17,14 @@ export interface DeliveryRow {
   deliveredAt: string | null;
   createdAt: string;
 }
+
+/** The updated delivery and the status its order has now. */
+export interface DeliveryUpdateResult {
+  delivery: DeliveryRow;
+  order: {
+    id: number | string;
+    orderNumber: string;
+    status: OrderStatus;
+    deliveredAt: string | null;
+  };
+}
