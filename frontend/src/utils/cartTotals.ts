@@ -29,7 +29,7 @@ export function cartTotals(lines: readonly PricedLine[]): CartTotals {
     0,
   );
   const deliveryCents =
-    subtotalCents === 0 || subtotalCents >= toCents(FREE_DELIVERY_FROM)
+    lines.length === 0 || subtotalCents >= toCents(FREE_DELIVERY_FROM)
       ? 0
       : toCents(DELIVERY_FEE);
   const taxCents = Math.round(subtotalCents * TAX_RATE);
