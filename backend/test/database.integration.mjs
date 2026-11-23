@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
+import { setTimeout as delay } from 'node:timers/promises';
 import { Client } from 'pg';
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from 'jose';
 import request from 'supertest';
@@ -22,7 +23,7 @@ const SEARCH_MIGRATION = '20261122160038_product_search_indexes.sql';
 const GUEST = randomUUID();
 
 let app, prisma, privateKey, customer, category;
-let failInvoiceEmail = false;
+const invoiceEmailFailures = new Set();
 const invoiceEmails = [];
 /** Product ids by name, filled by the catalogue test. */
 const ids = {};
@@ -163,7 +164,7 @@ before(async () => {
           [message.attachments[0].filename.replace(/\.pdf$/, '')],
         );
         invoiceEmails.push({ message, statusAtSend: invoice?.email_status });
-        if (failInvoiceEmail)
+        if (invoiceEmailFailures.has(message.to))
           throw Object.assign(new Error('Test SMTP failure'), {
             code: 'ECONNREFUSED',
           });
@@ -505,6 +506,17 @@ async function checkoutCounts(account) {
   );
 }
 
+async function waitForInvoiceEmail(invoiceId) {
+  const where = { id: BigInt(invoiceId) };
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    const invoice = await prisma.invoice.findUniqueOrThrow({ where });
+    if (invoice.emailStatus !== 'pending') return invoice;
+    await delay(20);
+  }
+  assert.fail(`Invoice ${invoiceId} email remained pending.`);
+}
+
 void test('checkout commits product and address snapshots, payment, deliveries and invoice before sending email', async () => {
   const account = await checkoutCustomer();
   const product = await checkoutProduct('Checkout discounted product', {
@@ -526,6 +538,7 @@ void test('checkout commits product and address snapshots, payment, deliveries a
   ]);
   assert.match(orderId, /^\d+$/);
   assert.match(invoiceId, /^\d+$/);
+  await waitForInvoiceEmail(invoiceId);
   const record = await one(
     `SELECT row_to_json(orders) AS order, row_to_json(invoices) AS invoice,
     (SELECT json_agg(order_items ORDER BY id) FROM order_items WHERE order_id = orders.id) AS lines,
@@ -677,6 +690,8 @@ void test('two customers racing for the last item create exactly one order', asy
     stock_quantity: 0,
     popularity: 1,
   });
+  const { invoiceId } = results.find((response) => response.status === 201).body;
+  assert.equal((await waitForInvoiceEmail(invoiceId)).emailStatus, 'sent');
   assert.equal(invoiceEmails.length, mailCount + 1);
 });
 
@@ -687,16 +702,11 @@ void test('same-cart submissions are serialized and an email failure leaves the 
   const reviewedCart = await reviewedCartFor(account);
   const mailCount = invoiceEmails.length;
 
-  failInvoiceEmail = true;
-  let results;
-  try {
-    results = await Promise.all([
-      checkout(account, reviewedCart),
-      checkout(account, reviewedCart),
-    ]);
-  } finally {
-    failInvoiceEmail = false;
-  }
+  invoiceEmailFailures.add(account.email);
+  const results = await Promise.all([
+    checkout(account, reviewedCart),
+    checkout(account, reviewedCart),
+  ]);
 
   assert.deepEqual(
     results
@@ -715,9 +725,7 @@ void test('same-cart submissions are serialized and an email failure leaves the 
     invoices: 1,
     cart_items: 0,
   });
-  const invoice = await prisma.invoice.findUnique({
-    where: { id: BigInt(invoiceId) },
-  });
+  const invoice = await waitForInvoiceEmail(invoiceId);
   assert.equal(String(invoice.orderId), orderId);
   assert.equal(invoice.emailStatus, 'failed');
   assert.ok(invoice.emailError);
@@ -786,7 +794,8 @@ void test('checkout requires reconfirmation when cart quantities, line prices or
   assert.deepEqual(await productStock(second), { stock_quantity: 10, popularity: 0 });
   assert.equal(invoiceEmails.length, mailCount);
 
-  await checkout(account, refreshed).expect(201);
+  const { body } = await checkout(account, refreshed).expect(201);
+  assert.equal((await waitForInvoiceEmail(body.invoiceId)).emailStatus, 'sent');
 });
 
 for (const role of ['anon', 'authenticated']) {

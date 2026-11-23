@@ -107,6 +107,24 @@ describe('checkout (e2e)', () => {
     expectNoCardDetails(res.text);
   });
 
+  it('returns the order while invoice email is still pending', async () => {
+    let finishEmail!: () => void;
+    const pendingEmail = new Promise<void>((resolve) => {
+      finishEmail = resolve;
+    });
+    sendInvoiceEmail.mockReturnValueOnce(pendingEmail);
+
+    try {
+      await post(customerToken)
+        .send(input)
+        .timeout({ deadline: 2_000 })
+        .expect(201, result);
+      expect(sendInvoiceEmail).toHaveBeenCalledExactlyOnceWith(result.invoiceId);
+    } finally {
+      finishEmail();
+    }
+  });
+
   it('declines the demo decline card and other valid numbers before calling the order service', async () => {
     for (const cardNumber of ['4000000000000002', '4012888888881881']) {
       const res = await post(customerToken)
