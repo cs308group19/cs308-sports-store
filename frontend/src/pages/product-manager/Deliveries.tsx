@@ -5,13 +5,17 @@ import {
   type Delivery,
   deliveryErrorMessage,
   fetchDeliveries,
+  updateDeliveryStatus,
 } from "../../services/deliveryApi";
 import {
+  type DeliveryAction,
   type DeliveryFilter,
   countByFilter,
   filterDeliveries,
   FILTERS,
   formatDate,
+  nextAction,
+  replaceDelivery,
   shortCustomerId,
   sortDeliveries,
   statusClass,
@@ -23,12 +27,17 @@ type LoadState = { status: "loading" } | { status: "ready" } | { status: "error"
 
 /**
  * SCRUM-34. The product manager's delivery list, from GET /api/staff/deliveries. A delivery only
- * moves forward (processing, in transit, delivered); the server enforces it.
+ * moves forward (processing, in transit, delivered); the server enforces it and keeps the order's
+ * status in line with its deliveries.
  */
-export function Deliveries() {
+export function Deliveries({ notify }: { notify: (s: string) => void }) {
   const [rows, setRows] = useState<Delivery[]>([]);
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [filter, setFilter] = useState<DeliveryFilter>("all");
+  /** The delivery that is waiting for "Yes, delivered", and the one being saved. */
+  const [confirming, setConfirming] = useState<Delivery["id"] | null>(null);
+  const [saving, setSaving] = useState<Delivery["id"] | null>(null);
+
   const load = useCallback(async (options: { quiet?: boolean } = {}) => {
     if (!options.quiet) setState({ status: "loading" });
     try {
@@ -45,6 +54,46 @@ export function Deliveries() {
 
   const counts = countByFilter(rows);
   const visible = filterDeliveries(rows, filter);
+
+  async function move(delivery: Delivery, action: DeliveryAction) {
+    setConfirming(null);
+    setSaving(delivery.id);
+    try {
+      const { delivery: updated } = await updateDeliveryStatus(delivery.id, action.next);
+      setRows((current) => replaceDelivery(current, updated));
+      notify(`${updated.deliveryNumber} is now ${statusLabel(updated.status).toLowerCase()}`);
+    } catch (error) {
+      notify(deliveryErrorMessage(error));
+      // Someone else may have changed it, so show what is saved now.
+      void load({ quiet: true });
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  function renderAction(delivery: Delivery) {
+    const action = nextAction(delivery.status);
+    if (!action) return <span className="muted">-</span>;
+    if (confirming === delivery.id) {
+      return (
+        <span className="button-group">
+          <Button onClick={() => void move(delivery, action)}>Yes, delivered</Button>
+          <Button variant="outline" onClick={() => setConfirming(null)}>
+            Cancel
+          </Button>
+        </span>
+      );
+    }
+    return (
+      <Button
+        variant={action.needsConfirmation ? "dark" : "primary"}
+        disabled={saving === delivery.id}
+        onClick={() => (action.needsConfirmation ? setConfirming(delivery.id) : void move(delivery, action))}
+      >
+        {saving === delivery.id ? "Saving..." : action.label}
+      </Button>
+    );
+  }
 
   return (
     <DashboardShell eyebrow="Fulfillment" title="Deliveries">
@@ -91,6 +140,7 @@ export function Deliveries() {
                     <th>Address</th>
                     <th>Status</th>
                     <th>Completed</th>
+                    <th>Update</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -114,6 +164,7 @@ export function Deliveries() {
                         </span>
                         {d.deliveredAt && <small> {formatDate(d.deliveredAt)}</small>}
                       </td>
+                      <td>{renderAction(d)}</td>
                     </tr>
                   ))}
                 </tbody>
