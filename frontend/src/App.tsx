@@ -37,6 +37,9 @@ export default function App() {
   const [authOrigin, setAuthOrigin] = useState<View>("home");
   const [selected, setSelected] = useState<Product>(products[0]);
   const [cart, setCart] = useState<CartView>({ items: [], total: 0 });
+  // The invoice the Invoice page shows. Checkout (SCRUM-22/23/24) calls openInvoice with the
+  // invoiceId from POST /api/me/checkout ({ orderId, orderNumber, invoiceId }).
+  const [invoiceId, setInvoiceId] = useState<string | null>(null);
   const [wishlist, setWishlist] = useState<Product[]>([products[0], products[4]]);
   const [shopCategory, setShopCategory] = useState("");
   const [toast, setToast] = useState("");
@@ -89,6 +92,11 @@ export default function App() {
     window.history.pushState({}, "", next === "login" ? "/auth" : "/");
     setMobileOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const openInvoice = (id: string) => {
+    setInvoiceId(id);
+    navigate("invoice");
   };
 
   const finishAuthentication = (account: SessionUser) => {
@@ -208,7 +216,7 @@ export default function App() {
         />
       );
     if (view === "checkout") return <Checkout cart={cart} navigate={navigate} />;
-    if (view === "invoice") return <Invoice notify={notify} navigate={navigate} />;
+    if (view === "invoice") return <Invoice invoiceId={invoiceId} navigate={navigate} />;
     if (view === "orders") return <Orders notify={notify} navigate={navigate} />;
     if (view === "wishlist")
       return <Wishlist products={wishlist} openProduct={openProduct} addToCart={addToCart} />;
