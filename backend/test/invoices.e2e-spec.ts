@@ -160,4 +160,53 @@ describe('Invoices (e2e)', () => {
       expect(res.status).toBe(401);
     });
   });
+  describe('GET /api/me/invoices/:id/pdf (SCRUM-26)', () => {
+    /** Collects the response body as bytes, so the PDF is not decoded as text. */
+    const binary = (
+      res: request.Response,
+      done: (error: Error | null, body: Buffer) => void,
+    ) => {
+      const chunks: Buffer[] = [];
+      res.on('data', (chunk: Buffer) => chunks.push(chunk));
+      res.on('end', () => done(null, Buffer.concat(chunks)));
+    };
+
+    it('returns the PDF to the owner with the invoice number as its file name', async () => {
+      const res = await server()
+        .get('/api/me/invoices/7/pdf')
+        .set('Authorization', await as(OWNER))
+        .buffer(true)
+        .parse(binary);
+
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toBe('application/pdf');
+      expect(res.headers['content-disposition']).toBe(
+        'attachment; filename="INV-2026-000007.pdf"',
+      );
+      expect(res.headers['cache-control']).toBe('private, no-store');
+      const body = res.body as Buffer;
+      expect(body.subarray(0, 5).toString()).toBe('%PDF-');
+      expect(body.length).toBeGreaterThan(1000);
+      expect(Number(res.headers['content-length'])).toBe(body.length);
+    });
+
+    it('answers 404 to another customer, as for an invoice that does not exist', async () => {
+      const other = await server()
+        .get('/api/me/invoices/7/pdf')
+        .set('Authorization', await as(OTHER));
+      const missing = await server()
+        .get('/api/me/invoices/999/pdf')
+        .set('Authorization', await as(OWNER));
+
+      expect(other.status).toBe(404);
+      expect(other.headers['content-type']).toMatch(/json/);
+      expect(missing.status).toBe(404);
+    });
+
+    it('answers 401 to a guest', async () => {
+      const res = await server().get('/api/me/invoices/7/pdf');
+
+      expect(res.status).toBe(401);
+    });
+  });
 });
