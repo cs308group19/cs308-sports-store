@@ -2,8 +2,14 @@ import { useEffect, useState } from "react";
 import { type View } from "../../app/navigation";
 import { Button } from "../../components/ui/Button";
 import { Icon } from "../../components/ui/Icon";
-import { fetchInvoice, invoiceErrorMessage, isInvoiceNotFound } from "../../services/invoiceApi";
+import {
+  fetchInvoice,
+  fetchInvoicePdf,
+  invoiceErrorMessage,
+  isInvoiceNotFound,
+} from "../../services/invoiceApi";
 import type { InvoiceView } from "../../types/invoice";
+import { saveBlob } from "../../utils/download";
 import {
   addressLines,
   firstName,
@@ -20,14 +26,17 @@ type State =
 
 export function Invoice({
   invoiceId,
+  notify,
   navigate,
 }: {
   /** From the checkout response ({ orderId, orderNumber, invoiceId }). */
   invoiceId: string | null;
+  notify: (message: string) => void;
   navigate: (v: View) => void;
 }) {
   const [state, setState] = useState<State>({ kind: "loading" });
   const [attempt, setAttempt] = useState(0);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     if (invoiceId === null) {
@@ -90,6 +99,17 @@ export function Invoice({
     );
 
   const { invoice } = state;
+  const downloadPdf = async () => {
+    setDownloading(true);
+    try {
+      const { blob, filename } = await fetchInvoicePdf(invoice.id, `${invoice.invoiceNumber}.pdf`);
+      saveBlob(blob, filename);
+    } catch (error) {
+      notify(invoiceErrorMessage(error));
+    } finally {
+      setDownloading(false);
+    }
+  };
   const money = (value: number) => formatAmount(value, invoice.currency);
   const { seller, billedTo, deliverTo, payment } = invoice;
 
@@ -203,6 +223,9 @@ export function Invoice({
         </div>
       </article>
       <div className="center-actions">
+        <Button onClick={downloadPdf} disabled={downloading}>
+          <Icon name="download" size={18} /> {downloading ? "Preparing PDF…" : "Download PDF"}
+        </Button>
         <Button variant="outline" onClick={() => window.print()}>
           Print
         </Button>
