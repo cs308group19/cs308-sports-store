@@ -9,6 +9,14 @@ export interface Env {
   SUPABASE_JWT_SECRET?: string;
   /** Express "trust proxy" setting, so rate limits see the client IP behind a proxy. */
   TRUST_PROXY: boolean | number | string;
+  /** Mail server for the invoice email. Defaults to a local Mailpit (localhost:1025). */
+  SMTP_HOST: string;
+  SMTP_PORT: number;
+  /** Leave both empty for a server without a login, such as Mailpit. */
+  SMTP_USER?: string;
+  SMTP_PASS?: string;
+  /** The "From" of every email the store sends. */
+  MAIL_FROM: string;
 }
 
 function optional(raw: Record<string, unknown>, name: keyof Env) {
@@ -68,6 +76,17 @@ export function validateEnv(raw: Record<string, unknown>): Env {
     throw new Error('PORT must be an integer between 1 and 65535');
   }
 
+  const smtpPortText = optional(raw, 'SMTP_PORT');
+  const smtpPort = smtpPortText === undefined ? 1025 : Number(smtpPortText);
+  if (!Number.isInteger(smtpPort) || smtpPort < 1 || smtpPort > 65535) {
+    throw new Error('SMTP_PORT must be an integer between 1 and 65535');
+  }
+  const smtpUser = optional(raw, 'SMTP_USER');
+  const smtpPass = optional(raw, 'SMTP_PASS');
+  if ((smtpUser === undefined) !== (smtpPass === undefined)) {
+    throw new Error('Set both SMTP_USER and SMTP_PASS, or neither of them.');
+  }
+
   return {
     PORT: port,
     CORS_ORIGIN:
@@ -80,5 +99,11 @@ export function validateEnv(raw: Record<string, unknown>): Env {
     FIELD_ENCRYPTION_KEY: encryptionKey,
     SUPABASE_JWT_SECRET: optional(raw, 'SUPABASE_JWT_SECRET'),
     TRUST_PROXY: parseTrustProxy(optional(raw, 'TRUST_PROXY')),
+    SMTP_HOST: optional(raw, 'SMTP_HOST') ?? 'localhost',
+    SMTP_PORT: smtpPort,
+    SMTP_USER: smtpUser,
+    SMTP_PASS: smtpPass,
+    MAIL_FROM:
+      optional(raw, 'MAIL_FROM') ?? 'RALLY Sports <no-reply@rally.store>',
   };
 }

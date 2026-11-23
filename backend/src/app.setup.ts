@@ -18,6 +18,8 @@ export function configureApp(app: INestApplication) {
       .get('CORS_ORIGIN', { infer: true })
       .split(',')
       .map((origin) => origin.trim()),
+    // Lets the browser read the file name of an invoice PDF when the frontend is on another origin.
+    exposedHeaders: ['Content-Disposition'],
   });
   app.useGlobalPipes(
     new ValidationPipe({

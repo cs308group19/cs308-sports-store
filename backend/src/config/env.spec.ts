@@ -66,4 +66,62 @@ describe('validateEnv', () => {
       /TRUST_PROXY/,
     );
   });
+
+  describe('invoice email settings (SCRUM-26)', () => {
+    it('defaults to a local Mailpit with no login', () => {
+      const env = validateEnv(TEST_ENV);
+      expect(env.SMTP_HOST).toBe('localhost');
+      expect(env.SMTP_PORT).toBe(1025);
+      expect(env.SMTP_USER).toBeUndefined();
+      expect(env.SMTP_PASS).toBeUndefined();
+      expect(env.MAIL_FROM).toBe('RALLY Sports <no-reply@rally.store>');
+    });
+
+    it('reads the SMTP settings', () => {
+      const env = validateEnv({
+        ...TEST_ENV,
+        SMTP_HOST: 'smtp.ethereal.email',
+        SMTP_PORT: '587',
+        SMTP_USER: 'user',
+        SMTP_PASS: 'secret',
+        MAIL_FROM: 'Shop <shop@example.com>',
+      });
+      expect(env).toMatchObject({
+        SMTP_HOST: 'smtp.ethereal.email',
+        SMTP_PORT: 587,
+        SMTP_USER: 'user',
+        SMTP_PASS: 'secret',
+        MAIL_FROM: 'Shop <shop@example.com>',
+      });
+    });
+
+    it('treats empty values, as in a copied .env.example, as not set', () => {
+      const env = validateEnv({
+        ...TEST_ENV,
+        SMTP_HOST: '',
+        SMTP_PORT: '',
+        SMTP_USER: '',
+        SMTP_PASS: '',
+        MAIL_FROM: '',
+      });
+      expect(env.SMTP_HOST).toBe('localhost');
+      expect(env.SMTP_PORT).toBe(1025);
+      expect(env.SMTP_USER).toBeUndefined();
+    });
+
+    it('rejects an invalid SMTP port', () => {
+      expect(() => validateEnv({ ...TEST_ENV, SMTP_PORT: 'abc' })).toThrow(
+        /SMTP_PORT/,
+      );
+    });
+
+    it('rejects a user without a password and a password without a user', () => {
+      expect(() => validateEnv({ ...TEST_ENV, SMTP_USER: 'user' })).toThrow(
+        /SMTP_USER and SMTP_PASS/,
+      );
+      expect(() => validateEnv({ ...TEST_ENV, SMTP_PASS: 'secret' })).toThrow(
+        /SMTP_USER and SMTP_PASS/,
+      );
+    });
+  });
 });
