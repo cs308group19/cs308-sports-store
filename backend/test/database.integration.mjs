@@ -22,6 +22,8 @@ const SEARCH_MIGRATION = '20261122160038_product_search_indexes.sql';
 const GUEST = randomUUID();
 
 let app, prisma, privateKey, customer, category;
+let failInvoiceEmail = false;
+const invoiceEmails = [];
 /** Product ids by name, filled by the catalogue test. */
 const ids = {};
 
@@ -119,6 +121,7 @@ before(async () => {
     { JWKS },
     { PrismaService },
     { SupabaseAdminService },
+    { MAIL_TRANSPORT },
   ] = await Promise.all([
     import('@nestjs/testing'),
     import('../dist/app.module.js'),
@@ -126,6 +129,7 @@ before(async () => {
     import('../dist/auth/jwks.js'),
     import('../dist/prisma/prisma.service.js'),
     import('../dist/supabase/supabase-admin.service.js'),
+    import('../dist/invoices/mail.transport.js'),
   ]);
   const keys = await generateKeyPair('ES256');
   privateKey = keys.privateKey;
@@ -149,6 +153,20 @@ before(async () => {
           await sql('DELETE FROM auth.users WHERE id = $1', [id]);
           return { error: null };
         },
+      },
+    })
+    .overrideProvider(MAIL_TRANSPORT)
+    .useValue({
+      async sendMail(message) {
+        const invoice = await one(
+          'SELECT email_status FROM public.invoices WHERE invoice_number = $1',
+          [message.attachments[0].filename.replace(/\.pdf$/, '')],
+        );
+        invoiceEmails.push({ message, statusAtSend: invoice?.email_status });
+        if (failInvoiceEmail)
+          throw Object.assign(new Error('Test SMTP failure'), {
+            code: 'ECONNREFUSED',
+          });
       },
     })
     .compile();
@@ -398,6 +416,377 @@ void test('an order keeps its product and customer from being deleted', async ()
     sql('DELETE FROM auth.users WHERE id = $1', [customer.id]),
     { code: '23503' },
   );
+});
+
+const checkoutInput = {
+  deliveryRecipient: 'Checkout Recipient',
+  deliveryAddress: 'New delivery address, Istanbul',
+  cardholderName: 'Checkout Cardholder',
+  cardNumber: '4242 4242 4242 4242',
+  expiry: '12/99',
+  cvv: '9731',
+};
+
+async function checkoutCustomer() {
+  const id = randomUUID();
+  await sql('INSERT INTO auth.users (id) VALUES ($1)', [id]);
+  const profile = await prisma.profile.create({
+    data: {
+      id,
+      email: `${id}@example.test`,
+      fullName: 'Checkout Customer',
+      homeAddress: 'Original profile address, Istanbul',
+    },
+    select: { email: true },
+  });
+  return {
+    id,
+    email: profile.email,
+    authorization: `Bearer ${await tokenFor(id)}`,
+  };
+}
+
+async function cartAdd(account, productId, quantity = 1) {
+  await server()
+    .post('/api/me/cart/items')
+    .set('Authorization', account.authorization)
+    .send({ productId, quantity })
+    .expect(201);
+}
+
+async function reviewedCartFor(account) {
+  const { body: cart } = await server()
+    .get('/api/me/cart')
+    .set('Authorization', account.authorization)
+    .expect(200);
+  const subtotalCents = Math.round(cart.total * 100);
+  const deliveryCents = cart.items.length > 0 && subtotalCents < 7500 ? 800 : 0;
+  return {
+    items: cart.items.map(({ productId, quantity, lineTotal }) => ({
+      productId,
+      quantity,
+      lineTotalCents: Math.round(lineTotal * 100),
+    })),
+    totalCents: subtotalCents + deliveryCents + Math.round((subtotalCents * 8) / 100),
+  };
+}
+
+const checkout = (account, reviewedCart, overrides = {}) =>
+  server()
+    .post('/api/me/checkout')
+    .set('Authorization', account.authorization)
+    .send({ ...checkoutInput, reviewedCart, ...overrides });
+
+const checkoutProduct = (name, options = {}) =>
+  insertProduct({
+    name,
+    description: 'A checkout test product',
+    price: '20.00',
+    ...options,
+  });
+
+async function productStock(productId) {
+  return one(
+    'SELECT stock_quantity, popularity FROM public.products WHERE id = $1',
+    [productId],
+  );
+}
+
+async function checkoutCounts(account) {
+  return one(
+    `SELECT
+    (SELECT count(*) FROM orders WHERE user_id = $1)::int AS orders,
+    (SELECT count(*) FROM order_items JOIN orders ON orders.id = order_id WHERE user_id = $1)::int AS items,
+    (SELECT count(*) FROM payments JOIN orders ON orders.id = order_id WHERE user_id = $1)::int AS payments,
+    (SELECT count(*) FROM deliveries WHERE customer_id = $1)::int AS deliveries,
+    (SELECT count(*) FROM invoices WHERE user_id = $1)::int AS invoices,
+    (SELECT count(*) FROM cart_items JOIN carts ON carts.id = cart_id WHERE user_id = $1)::int AS cart_items`,
+    [account.id],
+  );
+}
+
+void test('checkout commits product and address snapshots, payment, deliveries and invoice before sending email', async () => {
+  const account = await checkoutCustomer();
+  const product = await checkoutProduct('Checkout discounted product', {
+    price: '19.99',
+    discount_rate: '50',
+  });
+  const other = await checkoutProduct('Checkout second product', {
+    price: '5.00',
+  });
+  await cartAdd(account, product, 2);
+  await cartAdd(account, other);
+
+  const res = await checkout(account, await reviewedCartFor(account)).expect(201);
+  const { orderId, orderNumber, invoiceId } = res.body;
+  assert.deepEqual(Object.keys(res.body).sort(), [
+    'invoiceId',
+    'orderId',
+    'orderNumber',
+  ]);
+  assert.match(orderId, /^\d+$/);
+  assert.match(invoiceId, /^\d+$/);
+  const record = await one(
+    `SELECT row_to_json(orders) AS order, row_to_json(invoices) AS invoice,
+    (SELECT json_agg(order_items ORDER BY id) FROM order_items WHERE order_id = orders.id) AS lines,
+    (SELECT json_agg(deliveries ORDER BY id) FROM deliveries WHERE order_id = orders.id) AS deliveries,
+    (SELECT row_to_json(payments) FROM payments WHERE order_id = orders.id) AS payment
+    FROM orders JOIN invoices ON invoices.order_id = orders.id WHERE orders.id = $1`,
+    [orderId],
+  );
+  const { order, invoice, lines, deliveries, payment } = record;
+  assert.equal(order.order_number, orderNumber);
+  assert.equal(order.user_id, account.id);
+  assert.equal(order.status, 'processing');
+  assert.equal(order.delivery_recipient, checkoutInput.deliveryRecipient);
+  assert.equal(order.delivery_address, checkoutInput.deliveryAddress);
+  assert.equal(order.subtotal, 25);
+  assert.equal(order.discount_total, 19.98);
+  assert.equal(order.tax_amount, 2);
+  assert.equal(order.delivery_fee, 8);
+  assert.equal(order.total_amount, 35);
+  assert.equal(String(invoice.id), invoiceId);
+  assert.equal(invoice.billed_to_name, checkoutInput.deliveryRecipient);
+  assert.equal(invoice.billed_to_address, checkoutInput.deliveryAddress);
+  assert.equal(invoice.subtotal, order.subtotal);
+  assert.equal(invoice.tax_amount, order.tax_amount);
+  assert.equal(invoice.delivery_fee, order.delivery_fee);
+  assert.equal(invoice.total_amount, order.total_amount);
+  assert.equal(invoice.email_status, 'sent');
+  assert.ok(invoice.emailed_at);
+  assert.equal(lines.length, 2);
+  assert.equal(lines[0].product_name, 'Checkout discounted product');
+  assert.equal(lines[0].product_model, 'MODEL-Checkout discounted product');
+  assert.equal(lines[0].unit_list_price, 19.99);
+  assert.equal(lines[0].discount_rate, 50);
+  assert.equal(lines[0].unit_price_paid, 10);
+  assert.equal(lines[0].line_total, 20);
+  assert.deepEqual(
+    deliveries.map((row) => [row.order_item_id, row.quantity, row.total_price]),
+    lines.map((row) => [row.id, row.quantity, row.line_total]),
+  );
+  for (const delivery of deliveries) {
+    assert.equal(delivery.status, 'processing');
+    assert.equal(delivery.customer_id, account.id);
+    assert.equal(delivery.delivery_address, checkoutInput.deliveryAddress);
+  }
+  assert.equal(payment.status, 'succeeded');
+  assert.equal(payment.amount, 35);
+  assert.equal(payment.card_brand, 'Visa');
+  assert.equal(payment.card_last4, '4242');
+  assert.ok(payment.transaction_ref);
+  assert.equal(invoiceEmails.at(-1).statusAtSend, 'pending');
+  assert.equal(invoiceEmails.at(-1).message.to, account.email);
+  assert.equal(
+    await prisma.cartItem.count({ where: { cart: { userId: account.id } } }),
+    0,
+  );
+  assert.deepEqual(await productStock(product), {
+    stock_quantity: 8,
+    popularity: 2,
+  });
+  assert.deepEqual(await productStock(other), {
+    stock_quantity: 9,
+    popularity: 1,
+  });
+
+  const invoiceView = await server()
+    .get(`/api/me/invoices/${invoiceId}`)
+    .set('Authorization', account.authorization)
+    .expect(200);
+  assert.equal(invoiceView.body.deliveryFee, 8);
+  assert.equal(invoiceView.body.total, 35);
+  for (const payload of [record, res.body, invoiceView.body]) {
+    const output = JSON.stringify(payload);
+    assert.ok(!output.includes(checkoutInput.cardNumber));
+    assert.ok(!output.includes(checkoutInput.cardNumber.replaceAll(' ', '')));
+    assert.ok(!output.includes(`"${checkoutInput.cvv}"`));
+  }
+});
+
+void test('declined checkout changes no records, product stock or cart items', async () => {
+  const account = await checkoutCustomer();
+  const product = await checkoutProduct('Checkout decline product');
+  await cartAdd(account, product, 2);
+  const counts = await checkoutCounts(account);
+  const stock = await productStock(product);
+  const { body: cart } = await server()
+    .get('/api/me/cart')
+    .set('Authorization', account.authorization)
+    .expect(200);
+  const mailCount = invoiceEmails.length;
+
+  await checkout(account, await reviewedCartFor(account), {
+    cardNumber: '4000 0000 0000 0002',
+  }).expect(402);
+
+  assert.deepEqual(await checkoutCounts(account), counts);
+  assert.deepEqual(await productStock(product), stock);
+  const { body: unchanged } = await server()
+    .get('/api/me/cart')
+    .set('Authorization', account.authorization)
+    .expect(200);
+  assert.deepEqual(unchanged, cart);
+  assert.equal(invoiceEmails.length, mailCount);
+});
+
+void test('two customers racing for the last item create exactly one order', async () => {
+  const first = await checkoutCustomer();
+  const second = await checkoutCustomer();
+  const product = await checkoutProduct('Checkout last product', {
+    stock_quantity: 1,
+  });
+  await cartAdd(first, product);
+  await cartAdd(second, product);
+  const [firstCart, secondCart] = await Promise.all([
+    reviewedCartFor(first),
+    reviewedCartFor(second),
+  ]);
+  const mailCount = invoiceEmails.length;
+
+  const results = await Promise.all([
+    checkout(first, firstCart),
+    checkout(second, secondCart),
+  ]);
+
+  assert.deepEqual(
+    results
+      .map((response) => response.status)
+      .sort((first, second) => first - second),
+    [201, 409],
+  );
+  const winner = results[0].status === 201 ? first : second;
+  const loser = winner === first ? second : first;
+  assert.deepEqual(await checkoutCounts(winner), {
+    orders: 1,
+    items: 1,
+    payments: 1,
+    deliveries: 1,
+    invoices: 1,
+    cart_items: 0,
+  });
+  assert.deepEqual(await checkoutCounts(loser), {
+    orders: 0,
+    items: 0,
+    payments: 0,
+    deliveries: 0,
+    invoices: 0,
+    cart_items: 1,
+  });
+  assert.deepEqual(await productStock(product), {
+    stock_quantity: 0,
+    popularity: 1,
+  });
+  assert.equal(invoiceEmails.length, mailCount + 1);
+});
+
+void test('same-cart submissions are serialized and an email failure leaves the order available', async () => {
+  const account = await checkoutCustomer();
+  const product = await checkoutProduct('Checkout double submit product');
+  await cartAdd(account, product, 2);
+  const reviewedCart = await reviewedCartFor(account);
+  const mailCount = invoiceEmails.length;
+
+  failInvoiceEmail = true;
+  let results;
+  try {
+    results = await Promise.all([
+      checkout(account, reviewedCart),
+      checkout(account, reviewedCart),
+    ]);
+  } finally {
+    failInvoiceEmail = false;
+  }
+
+  assert.deepEqual(
+    results
+      .map((response) => response.status)
+      .sort((first, second) => first - second),
+    [201, 409],
+  );
+  const { orderId, invoiceId } = results.find(
+    (response) => response.status === 201,
+  ).body;
+  assert.deepEqual(await checkoutCounts(account), {
+    orders: 1,
+    items: 1,
+    payments: 1,
+    deliveries: 1,
+    invoices: 1,
+    cart_items: 0,
+  });
+  const invoice = await prisma.invoice.findUnique({
+    where: { id: BigInt(invoiceId) },
+  });
+  assert.equal(String(invoice.orderId), orderId);
+  assert.equal(invoice.emailStatus, 'failed');
+  assert.ok(invoice.emailError);
+  assert.equal(invoice.emailedAt, null);
+  await server()
+    .get(`/api/me/invoices/${invoiceId}`)
+    .set('Authorization', account.authorization)
+    .expect(200);
+  assert.equal(invoiceEmails.length, mailCount + 1);
+});
+
+void test('stock failure on a later cart line rolls back earlier product changes', async () => {
+  const account = await checkoutCustomer();
+  const first = await checkoutProduct('Checkout rollback first product');
+  const second = await checkoutProduct('Checkout rollback second product');
+  await cartAdd(account, first);
+  await cartAdd(account, second);
+  const reviewedCart = await reviewedCartFor(account);
+  await sql('UPDATE public.products SET stock_quantity = 0 WHERE id = $1', [
+    second,
+  ]);
+  const before = await checkoutCounts(account);
+
+  const response = await checkout(account, reviewedCart).expect(409);
+  assert.match(response.body.message, /requested quantity/);
+
+  assert.deepEqual(await checkoutCounts(account), before);
+  assert.deepEqual(await productStock(first), {
+    stock_quantity: 10,
+    popularity: 0,
+  });
+  assert.deepEqual(await productStock(second), {
+    stock_quantity: 0,
+    popularity: 0,
+  });
+});
+
+void test('checkout requires reconfirmation when cart quantities, line prices or the total change', async () => {
+  const account = await checkoutCustomer();
+  const first = await checkoutProduct('Checkout reviewed first product');
+  const second = await checkoutProduct('Checkout reviewed second product');
+  await cartAdd(account, first);
+  await cartAdd(account, second);
+  const initialCart = await reviewedCartFor(account);
+  const before = await checkoutCounts(account);
+  const mailCount = invoiceEmails.length;
+
+  await cartAdd(account, first);
+  await checkout(account, initialCart).expect(409);
+
+  const quantityUpdated = await reviewedCartFor(account);
+  // The updated line prices still add up to the previous subtotal.
+  await sql('UPDATE public.products SET price = $2 WHERE id = $1', [first, '21.00']);
+  await sql('UPDATE public.products SET price = $2 WHERE id = $1', [second, '18.00']);
+  const refreshed = await reviewedCartFor(account);
+  assert.equal(refreshed.totalCents, quantityUpdated.totalCents);
+  await checkout(account, quantityUpdated).expect(409);
+  await checkout(account, {
+    ...refreshed,
+    totalCents: refreshed.totalCents - 1,
+  }).expect(409);
+
+  assert.deepEqual(await checkoutCounts(account), before);
+  assert.deepEqual(await reviewedCartFor(account), refreshed);
+  assert.deepEqual(await productStock(first), { stock_quantity: 10, popularity: 0 });
+  assert.deepEqual(await productStock(second), { stock_quantity: 10, popularity: 0 });
+  assert.equal(invoiceEmails.length, mailCount);
+
+  await checkout(account, refreshed).expect(201);
 });
 
 for (const role of ['anon', 'authenticated']) {
