@@ -1,6 +1,7 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { type InvoiceRecord, toInvoiceResponse } from './invoice.mapper.js';
+import { buildInvoicePdf, invoicePdfFilename } from './invoice.pdf.js';
 import type { InvoiceResponse } from './invoice.types.js';
 
 const NOT_FOUND = 'Invoice not found.';
@@ -35,5 +36,20 @@ export class InvoicesService {
     });
     if (!record) throw new NotFoundException(NOT_FOUND);
     return toInvoiceResponse(record as InvoiceRecord);
+  }
+
+  /**
+   * SCRUM-26. The same invoice as a PDF. It goes through getForUser, so the ownership rule is the
+   * same: someone else's invoice is a 404.
+   */
+  async getPdfForUser(
+    userId: string,
+    invoiceId: bigint,
+  ): Promise<{ filename: string; content: Buffer }> {
+    const invoice = await this.getForUser(userId, invoiceId);
+    return {
+      filename: invoicePdfFilename(invoice.invoiceNumber),
+      content: await buildInvoicePdf(invoice),
+    };
   }
 }
