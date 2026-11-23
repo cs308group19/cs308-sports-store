@@ -7,6 +7,7 @@ import { createSupabaseJwks, JWKS } from './auth/jwks.js';
 import { RolesGuard } from './auth/roles.guard.js';
 import { SupabaseJwtGuard } from './auth/supabase-jwt.guard.js';
 import { CartModule } from './cart/cart.module.js';
+import { CheckoutModule } from './checkout/checkout.module.js';
 import { CryptoModule } from './common/crypto/crypto.module.js';
 import { type Env, validateEnv } from './config/env.js';
 import { HealthController } from './health/health.controller.js';
@@ -29,6 +30,7 @@ import { UsersModule } from './users/users.module.js';
     ProductDetailModule,
     CartModule,
     InvoicesModule,
+    CheckoutModule,
   ],
   controllers: [HealthController, StaffController],
   providers: [
