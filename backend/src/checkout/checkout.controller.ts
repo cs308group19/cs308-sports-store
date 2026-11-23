@@ -48,7 +48,7 @@ export class CheckoutController {
       card,
       body.reviewedCart,
     );
-    await this.invoices.sendInvoiceEmail(order.invoiceId);
+    void this.invoices.sendInvoiceEmail(order.invoiceId);
     return order;
   }
 }
