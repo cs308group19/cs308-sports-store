@@ -48,6 +48,21 @@ npm run start:dev      # http://localhost:3000/api
 
 The schema is in `../supabase/migrations/`; SQL owns the tables, checks, grants and RLS. `prisma/schema.prisma` mirrors the public tables: update it by hand after a schema change, then run `npm run prisma:generate`. Never use Prisma Migrate or `db push` on this schema. See the [database guide](../supabase/README.md), including how to run the tests against a real PostgreSQL.
 
+## Deliveries (product managers)
+
+| Endpoint | What it does |
+|---|---|
+| `GET /api/staff/deliveries?status=` | Every delivery row with its order number and product name. `status` is optional: `processing`, `in_transit` or `delivered` (anything else is 400). Open deliveries come first: processing, then in transit, then delivered, oldest first in each. |
+| `PATCH /api/staff/deliveries/:id` `{ "status": "in_transit" }` | Moves one delivery forward. Returns `{ delivery, order }` with the new order status. |
+
+Only product managers can use them (customers, sales managers and support agents get 403, guests 401).
+
+- A status only moves forward: `processing` → `in_transit` → `delivered`, skipping a step is allowed. Going back, repeating the current status, `cancelled`, or touching a cancelled order is **409**; an unknown id is **404**; an invalid status or id is **400**.
+- `delivered` sets `is_completed` and `delivered_at`.
+- In the same transaction the order gets the status of its least advanced delivery row. When its last row is delivered the order becomes `delivered` and `orders.delivered_at` is set.
+- The order row is locked (`SELECT ... FOR UPDATE`) at the start of the update, so two managers working on the same order take turns: one delivery cannot move twice, and an order whose two items are delivered at the same moment still ends up `delivered`. The delivery update is also conditional on the status that was read.
+- Checkout creates the rows: one delivery per order item, status `processing`.
+
 ## Demo accounts and roles
 
 ```bash
@@ -89,6 +104,7 @@ backend/
 │   ├── users/                  create account, set role (Supabase admin API + Prisma)
 │   ├── staff/                  placeholder role-protected endpoints
 │   ├── invoices/               invoice endpoints, PDF (pdfkit) and email (nodemailer)
+│   ├── deliveries/             product manager delivery list and status updates (SCRUM-34)
 │   ├── common/crypto/          AES-256-GCM field encryption
 │   ├── prisma/, supabase/      shared services
 │   └── scripts/                seed:demo, seed:catalogue and user:set-role
