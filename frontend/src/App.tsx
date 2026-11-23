@@ -8,6 +8,7 @@ import type { SessionUser } from "./auth/types";
 import { Footer } from "./components/layout/Footer";
 import { Header } from "./components/layout/Header";
 import { SupportChat } from "./components/layout/SupportChat";
+import { Button } from "./components/ui/Button";
 import { Icon } from "./components/ui/Icon";
 import { AuthPage } from "./pages/auth/AuthPage";
 import { Cart } from "./pages/customer/Cart";
@@ -29,6 +30,11 @@ import { Pricing } from "./pages/sales-manager/Pricing";
 import { Refunds } from "./pages/sales-manager/Refunds";
 import { SupportDesk } from "./pages/support-agent/SupportDesk";
 
+interface CheckoutInvoice {
+  id: string;
+  customerId: string;
+}
+
 export default function App() {
   const { user, loading, signOut } = useAuth();
   const role: Role = user?.role ?? "Customer";
@@ -37,9 +43,9 @@ export default function App() {
   const [authOrigin, setAuthOrigin] = useState<View>("home");
   const [selected, setSelected] = useState<Product>(products[0]);
   const [cart, setCart] = useState<CartView>({ items: [], total: 0 });
-  // The invoice the Invoice page shows. Checkout (SCRUM-22/23/24) calls openInvoice with the
-  // invoiceId from POST /api/me/checkout ({ orderId, orderNumber, invoiceId }).
-  const [invoiceId, setInvoiceId] = useState<string | null>(null);
+  const [cartLoad, setCartLoad] = useState<{ userId: string; status: "ready" | "failed" } | null>(null);
+  const [cartRetry, setCartRetry] = useState(0);
+  const [checkoutInvoice, setCheckoutInvoice] = useState<CheckoutInvoice | null>(null);
   const [wishlist, setWishlist] = useState<Product[]>([products[0], products[4]]);
   const [shopCategory, setShopCategory] = useState("");
   const [toast, setToast] = useState("");
@@ -47,7 +53,10 @@ export default function App() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
-    const onPopState = () => setView(window.location.pathname === "/auth" ? "login" : "home");
+    const onPopState = () => {
+      setCheckoutInvoice(null);
+      setView(window.location.pathname === "/auth" ? "login" : "home");
+    };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
@@ -65,7 +74,12 @@ export default function App() {
     if (!loading && !user && staffViews.has(view)) setView("home");
   }, [loading, user, view]);
 
-  const navigate = (next: View) => {
+  useEffect(() => {
+    setCheckoutInvoice((invoice) => invoice?.customerId === user?.id ? invoice : null);
+  }, [user?.id]);
+
+  const navigate = (next: View, invoice: CheckoutInvoice | null = null) => {
+    setCheckoutInvoice(invoice);
     if (next === "checkout" && !user) {
       setAuthOrigin(view);
       setReturnTo("checkout");
@@ -94,11 +108,6 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const openInvoice = (id: string) => {
-    setInvoiceId(id);
-    navigate("invoice");
-  };
-
   const finishAuthentication = (account: SessionUser) => {
     const destination = account.role === "Customer" ? returnTo : roleDefaults[account.role];
     setView(staffViews.has(destination) && account.role === "Customer" ? "home" : destination);
@@ -122,20 +131,25 @@ export default function App() {
   useEffect(() => {
     if (loading) return;
     let cancelled = false;
+    setCartLoad(null);
     void (async () => {
       try {
         if (user) await mergeGuestCart();
-        const view = await fetchCart(Boolean(user));
-        if (!cancelled) setCart(view);
+        const currentCart = await fetchCart(Boolean(user));
+        if (cancelled) return;
+        setCart(currentCart);
+        if (user) setCartLoad({ userId: user.id, status: "ready" });
       } catch (error) {
-        if (!cancelled) notify(cartErrorMessage(error));
+        if (cancelled) return;
+        if (user) setCartLoad({ userId: user.id, status: "failed" });
+        notify(cartErrorMessage(error));
       }
     })();
     return () => {
       cancelled = true;
     };
     // The cart depends on who is signed in, not on the rest of the user object.
-  }, [loading, user?.id]);
+  }, [loading, user?.id, cartRetry]);
 
   const addToCart = async (product: Product) => {
     try {
@@ -215,8 +229,47 @@ export default function App() {
           onCancel={() => navigate(authOrigin === "login" ? "home" : authOrigin)}
         />
       );
-    if (view === "checkout") return <Checkout cart={cart} navigate={navigate} />;
-    if (view === "invoice") return <Invoice invoiceId={invoiceId} notify={notify} navigate={navigate} />;
+    if (view === "checkout") {
+      const status = cartLoad?.userId === user?.id ? cartLoad?.status : undefined;
+      if (user?.role === "Customer" && !loading && status === "ready") {
+        return (
+          <Checkout
+            key={user.id}
+            cart={cart}
+            customer={user}
+            onSuccess={(id) => {
+              setCart({ items: [], total: 0 });
+              navigate("invoice", { id, customerId: user.id });
+            }}
+            onCartRefresh={setCart}
+            backToCart={() => navigate("cart")}
+          />
+        );
+      }
+      return (
+        <div className="page narrow">
+          <h1>Checkout</h1>
+          {!loading && !user ? (
+            <Button onClick={() => navigate("checkout")}>Sign in to continue</Button>
+          ) : !loading && user?.role !== "Customer" ? (
+            <p>Checkout is available to customer accounts.</p>
+          ) : status === "failed" ? (
+            <>
+              <p role="alert">Could not load your cart.</p>
+              <Button onClick={() => setCartRetry((attempt) => attempt + 1)}>Try again</Button>
+            </>
+          ) : (
+            <p role="status">Loading your cart…</p>
+          )}
+        </div>
+      );
+    }
+    if (view === "invoice") {
+      const invoiceId = user?.role === "Customer" && checkoutInvoice?.customerId === user.id
+        ? checkoutInvoice.id
+        : null;
+      return <Invoice key={invoiceId ?? "missing"} invoiceId={invoiceId} notify={notify} navigate={navigate} />;
+    }
     if (view === "orders") return <Orders notify={notify} navigate={navigate} />;
     if (view === "wishlist")
       return <Wishlist products={wishlist} openProduct={openProduct} addToCart={addToCart} />;

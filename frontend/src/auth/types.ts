@@ -4,6 +4,7 @@ export interface SessionUser {
   id: string;
   name: string;
   email: string;
+  homeAddress: string | null;
   role: Role;
 }
 
