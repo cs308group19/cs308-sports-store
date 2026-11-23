@@ -2,9 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /** SCRUM-25. The invoice page loads the invoice of the signed-in customer from the API. */
 const apiFetch = vi.fn();
+const apiFetchFile = vi.fn();
 
 vi.mock("../lib/api", () => ({
   apiFetch,
+  apiFetchFile,
   ApiError: class ApiError extends Error {
     constructor(
       readonly status: number,
@@ -15,11 +17,13 @@ vi.mock("../lib/api", () => ({
   },
 }));
 
-const { fetchInvoice, invoiceErrorMessage, isInvoiceNotFound } = await import("./invoiceApi");
+const { fetchInvoice, fetchInvoicePdf, invoiceErrorMessage, isInvoiceNotFound } =
+  await import("./invoiceApi");
 const { ApiError } = await import("../lib/api");
 
 beforeEach(() => {
   apiFetch.mockReset();
+  apiFetchFile.mockReset();
 });
 
 describe("fetchInvoice", () => {
@@ -33,6 +37,30 @@ describe("fetchInvoice", () => {
     apiFetch.mockResolvedValue({});
     await fetchInvoice("7/pdf");
     expect(apiFetch).toHaveBeenCalledWith("/me/invoices/7%2Fpdf");
+  });
+});
+
+describe("fetchInvoicePdf (SCRUM-26)", () => {
+  const blob = new Blob(["%PDF-1.3"]);
+
+  it("downloads the PDF of that invoice and keeps the server's file name", async () => {
+    apiFetchFile.mockResolvedValue({ blob, filename: "INV-2026-000007.pdf" });
+    await expect(fetchInvoicePdf("7", "fallback.pdf")).resolves.toEqual({
+      blob,
+      filename: "INV-2026-000007.pdf",
+    });
+    expect(apiFetchFile).toHaveBeenCalledWith("/me/invoices/7/pdf");
+  });
+
+  it("names the file after the invoice number when the server's name is not readable", async () => {
+    apiFetchFile.mockResolvedValue({ blob, filename: null });
+    const file = await fetchInvoicePdf("7", "INV-2026-000007.pdf");
+    expect(file.filename).toBe("INV-2026-000007.pdf");
+  });
+
+  it("passes an error on, so the page can show a toast", async () => {
+    apiFetchFile.mockRejectedValue(new ApiError(404, "Invoice not found."));
+    await expect(fetchInvoicePdf("7", "x.pdf")).rejects.toMatchObject({ status: 404 });
   });
 });
 

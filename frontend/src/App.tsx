@@ -216,7 +216,7 @@ export default function App() {
         />
       );
     if (view === "checkout") return <Checkout cart={cart} navigate={navigate} />;
-    if (view === "invoice") return <Invoice invoiceId={invoiceId} navigate={navigate} />;
+    if (view === "invoice") return <Invoice invoiceId={invoiceId} notify={notify} navigate={navigate} />;
     if (view === "orders") return <Orders notify={notify} navigate={navigate} />;
     if (view === "wishlist")
       return <Wishlist products={wishlist} openProduct={openProduct} addToCart={addToCart} />;
