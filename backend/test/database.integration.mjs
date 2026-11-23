@@ -509,3 +509,183 @@ void test('search indexes live with pg_trgm in extensions and serve ILIKE', asyn
     await sql('ROLLBACK');
   }
 });
+
+// SCRUM-34. Delivery list and status changes on the real tables. Checkout is not merged yet, so
+// the order, its items and one delivery row per item are inserted here as the order contract
+// describes them.
+async function insertStaff(role, email) {
+  const id = randomUUID();
+  await sql('INSERT INTO auth.users (id) VALUES ($1)', [id]);
+  await sql(
+    `INSERT INTO public.profiles (id, email, full_name, role)
+     VALUES ($1, $2, $3, $4)`,
+    [id, email, `Test ${role}`, role],
+  );
+  return id;
+}
+
+async function insertOrderWithDeliveries(number, productNames) {
+  const { id: orderId } = await one(
+    `INSERT INTO public.orders
+       (order_number, user_id, subtotal, total_amount, delivery_recipient, delivery_address)
+     VALUES ($1, $2, 140, 140, 'Database Test', 'Test address 308')
+     RETURNING id`,
+    [number, customer.id],
+  );
+  const deliveries = [];
+  for (const [index, name] of productNames.entries()) {
+    const { id: itemId } = await one(
+      `INSERT INTO public.order_items
+         (order_id, product_id, product_name, quantity, unit_list_price, unit_price_paid, line_total)
+       VALUES ($1, $2, $3, 1, 70, 70, 70) RETURNING id`,
+      [orderId, ids[name], name],
+    );
+    const { id } = await one(
+      `INSERT INTO public.deliveries
+         (delivery_number, order_id, order_item_id, customer_id, product_id, quantity,
+          total_price, delivery_address)
+       VALUES ($1, $2, $3, $4, $5, 1, 70, 'Test address 308') RETURNING id`,
+      [`${number}-D${index + 1}`, orderId, itemId, customer.id, ids[name]],
+    );
+    deliveries.push(id);
+  }
+  return { orderId, deliveries };
+}
+
+void test('a product manager lists deliveries and moves them forward; the order follows its rows', async () => {
+  const manager = await insertStaff('product_manager', 'pm-db@example.invalid');
+  const auth = `Bearer ${await tokenFor(manager)}`;
+  const { orderId, deliveries } = await insertOrderWithDeliveries('DB-DLV-1', [
+    'Road Racer',
+    'Trail Runner',
+  ]);
+  const patch = (id, status) =>
+    server()
+      .patch(`/api/staff/deliveries/${id}`)
+      .set('Authorization', auth)
+      .send({ status });
+  const orderRow = () =>
+    one(
+      'SELECT status, delivered_at, updated_at FROM public.orders WHERE id = $1',
+      [orderId],
+    );
+
+  // Customers are refused; the manager sees both rows with order number and product name.
+  await server()
+    .get('/api/staff/deliveries')
+    .set('Authorization', `Bearer ${await tokenFor(customer.id)}`)
+    .expect(403);
+  const list = await server()
+    .get('/api/staff/deliveries?status=processing')
+    .set('Authorization', auth)
+    .expect(200);
+  const mine = list.body.filter((row) => row.orderNumber === 'DB-DLV-1');
+  assert.deepEqual(
+    mine.map((row) => [row.productName, row.status, row.totalPrice]),
+    [
+      ['Road Racer', 'processing', 70],
+      ['Trail Runner', 'processing', 70],
+    ],
+  );
+
+  const before = await orderRow();
+  await patch(deliveries[0], 'in_transit').expect(200);
+  assert.equal((await orderRow()).status, 'processing');
+  assert.ok((await orderRow()).updated_at > before.updated_at);
+
+  await patch(deliveries[0], 'processing').expect(409);
+  await patch(deliveries[0], 'in_transit').expect(409);
+  await patch(deliveries[0], 'cancelled').expect(409);
+  await patch(deliveries[1], 'shipped').expect(400);
+  await patch(999999, 'delivered').expect(404);
+
+  await patch(deliveries[1], 'in_transit').expect(200);
+  assert.equal((await orderRow()).status, 'in_transit');
+
+  const first = await patch(deliveries[0], 'delivered').expect(200);
+  assert.equal(first.body.delivery.isCompleted, true);
+  const row = await one('SELECT * FROM public.deliveries WHERE id = $1', [
+    deliveries[0],
+  ]);
+  assert.equal(row.is_completed, true);
+  assert.ok(row.delivered_at instanceof Date);
+  const half = await orderRow();
+  assert.equal(half.status, 'in_transit');
+  assert.equal(half.delivered_at, null);
+
+  const last = await patch(deliveries[1], 'delivered').expect(200);
+  assert.equal(last.body.order.status, 'delivered');
+  const done = await orderRow();
+  assert.equal(done.status, 'delivered');
+  assert.ok(done.delivered_at instanceof Date);
+});
+
+void test('two managers changing the same delivery at once: exactly one succeeds, the other gets 409', async () => {
+  const manager = await insertStaff(
+    'product_manager',
+    'pm-db-2@example.invalid',
+  );
+  const other = await insertStaff('product_manager', 'pm-db-3@example.invalid');
+  const { orderId, deliveries } = await insertOrderWithDeliveries('DB-DLV-2', [
+    'Road Racer',
+  ]);
+  const patch = async (who, status) =>
+    server()
+      .patch(`/api/staff/deliveries/${deliveries[0]}`)
+      .set('Authorization', `Bearer ${await tokenFor(who)}`)
+      .send({ status });
+
+  for (const status of ['in_transit', 'delivered']) {
+    const results = await Promise.all([
+      patch(manager, status),
+      patch(other, status),
+      patch(manager, status),
+    ]);
+    const codes = results.map((res) => res.status).sort((a, b) => a - b);
+    assert.deepEqual(codes, [200, 409, 409], `simultaneous ${status}`);
+  }
+  const row = await one(
+    'SELECT status, is_completed FROM public.deliveries WHERE id = $1',
+    [deliveries[0]],
+  );
+  assert.deepEqual(row, { status: 'delivered', is_completed: true });
+  assert.equal(
+    (await one('SELECT status FROM public.orders WHERE id = $1', [orderId]))
+      .status,
+    'delivered',
+  );
+});
+
+void test('delivering the two items of one order at the same time still delivers the order', async () => {
+  const manager = await insertStaff(
+    'product_manager',
+    'pm-db-4@example.invalid',
+  );
+  const auth = `Bearer ${await tokenFor(manager)}`;
+  // Many rounds, because the bug this guards against (both requests read the other item as not
+  // yet delivered) only shows when the two transactions overlap.
+  for (let round = 0; round < 8; round += 1) {
+    const { orderId, deliveries } = await insertOrderWithDeliveries(
+      `DB-DLV-3-${round}`,
+      ['Road Racer', 'Trail Runner'],
+    );
+    const responses = await Promise.all(
+      deliveries.map((id) =>
+        server()
+          .patch(`/api/staff/deliveries/${id}`)
+          .set('Authorization', auth)
+          .send({ status: 'delivered' }),
+      ),
+    );
+    assert.deepEqual(
+      responses.map((res) => res.status),
+      [200, 200],
+    );
+    const order = await one(
+      'SELECT status, delivered_at FROM public.orders WHERE id = $1',
+      [orderId],
+    );
+    assert.equal(order.status, 'delivered', `round ${round}`);
+    assert.ok(order.delivered_at instanceof Date);
+  }
+});
