@@ -1,92 +1,127 @@
+import { useCallback, useEffect, useState } from "react";
 import { DashboardShell } from "../../components/layout/DashboardShell";
+import { Button } from "../../components/ui/Button";
+import {
+  type Delivery,
+  deliveryErrorMessage,
+  fetchDeliveries,
+} from "../../services/deliveryApi";
+import {
+  type DeliveryFilter,
+  countByFilter,
+  filterDeliveries,
+  FILTERS,
+  formatDate,
+  shortCustomerId,
+  sortDeliveries,
+  statusClass,
+  statusLabel,
+} from "../../utils/deliveries";
+import { money } from "../../utils/format";
 
-export function Deliveries({ notify }: { notify: (s: string) => void }) {
-  const deliveries = [
-    [
-      "DLV-81142",
-      "CUS-1042",
-      "RLY-P-0003",
-      "1",
-      "$99.00",
-      "123 Fast Lane, Istanbul",
-      "No",
-      "Processing",
-    ],
-    [
-      "DLV-81102",
-      "CUS-0921",
-      "RLY-P-0001",
-      "2",
-      "$258.00",
-      "8 Park Ave, Ankara",
-      "No",
-      "In transit",
-    ],
-    [
-      "DLV-81087",
-      "CUS-0874",
-      "RLY-P-0005",
-      "1",
-      "$39.00",
-      "44 Coast Rd, Izmir",
-      "Yes",
-      "Delivered",
-    ],
-    [
-      "DLV-81055",
-      "CUS-0740",
-      "RLY-P-0002",
-      "1",
-      "$145.00",
-      "19 Hill St, Bursa",
-      "No",
-      "Processing",
-    ],
-  ];
+type LoadState = { status: "loading" } | { status: "ready" } | { status: "error"; message: string };
+
+/**
+ * SCRUM-34. The product manager's delivery list, from GET /api/staff/deliveries. A delivery only
+ * moves forward (processing, in transit, delivered); the server enforces it.
+ */
+export function Deliveries() {
+  const [rows, setRows] = useState<Delivery[]>([]);
+  const [state, setState] = useState<LoadState>({ status: "loading" });
+  const [filter, setFilter] = useState<DeliveryFilter>("all");
+  const load = useCallback(async (options: { quiet?: boolean } = {}) => {
+    if (!options.quiet) setState({ status: "loading" });
+    try {
+      setRows(sortDeliveries(await fetchDeliveries()));
+      setState({ status: "ready" });
+    } catch (error) {
+      setState({ status: "error", message: deliveryErrorMessage(error) });
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const counts = countByFilter(rows);
+  const visible = filterDeliveries(rows, filter);
+
   return (
     <DashboardShell eyebrow="Fulfillment" title="Deliveries">
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Delivery ID</th>
-              <th>Customer ID</th>
-              <th>Product ID</th>
-              <th>Quantity</th>
-              <th>Total price</th>
-              <th>Delivery address</th>
-              <th>Completed</th>
-              <th>Status update</th>
-            </tr>
-          </thead>
-          <tbody>
-            {deliveries.map((d) => (
-              <tr key={d[0]}>
-                <td>
-                  <b>{d[0]}</b>
-                </td>
-                <td>{d[1]}</td>
-                <td>{d[2]}</td>
-                <td>{d[3]}</td>
-                <td>{d[4]}</td>
-                <td>{d[5]}</td>
-                <td>
-                  <span className={`status ${d[6] === "Yes" ? "green" : "orange-status"}`}>
-                    {d[6]}
-                  </span>
-                </td>
-                <td>
-                  <select defaultValue={d[7]} onChange={() => notify(`${d[0]} status updated`)}>
-                    <option>Processing</option>
-                    <option>In transit</option>
-                    <option>Delivered</option>
-                  </select>
-                </td>
-              </tr>
+      {state.status === "error" ? (
+        <div className="empty">
+          <h2>Deliveries could not be loaded</h2>
+          <p>{state.message}</p>
+          <Button onClick={() => void load()}>Try again</Button>
+        </div>
+      ) : (
+        <>
+          <div className="auth-tabs" role="tablist" aria-label="Filter deliveries by status">
+            {FILTERS.map(({ key, label }) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={filter === key}
+                className={filter === key ? "active" : ""}
+                onClick={() => setFilter(key)}
+              >
+                {label} ({counts[key]})
+              </button>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </div>
+          <div className="table-wrap" aria-busy={state.status === "loading"}>
+            {state.status === "loading" ? (
+              <div className="empty">Loading deliveries...</div>
+            ) : visible.length === 0 ? (
+              <div className="empty">
+                <h2>{rows.length === 0 ? "No deliveries yet" : "No deliveries in this view"}</h2>
+                {rows.length === 0 && <p>Deliveries appear here after customers place orders.</p>}
+              </div>
+            ) : (
+              <table>
+                <thead>
+                  <tr>
+                    <th>Delivery #</th>
+                    <th>Order #</th>
+                    <th>Customer ID</th>
+                    <th>Product</th>
+                    <th>Qty</th>
+                    <th>Total</th>
+                    <th>Address</th>
+                    <th>Status</th>
+                    <th>Completed</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visible.map((d) => (
+                    <tr key={d.id}>
+                      <td>
+                        <b>{d.deliveryNumber}</b>
+                      </td>
+                      <td>{d.orderNumber}</td>
+                      <td title={d.customerId}>{shortCustomerId(d.customerId)}</td>
+                      <td>{d.productName}</td>
+                      <td>{d.quantity}</td>
+                      <td>{money(d.totalPrice)}</td>
+                      <td>{d.deliveryAddress}</td>
+                      <td>
+                        <span className={`status ${statusClass(d.status)}`}>{statusLabel(d.status)}</span>
+                      </td>
+                      <td>
+                        <span className={`status ${d.isCompleted ? "green" : "orange-status"}`}>
+                          {d.isCompleted ? "Yes" : "No"}
+                        </span>
+                        {d.deliveredAt && <small> {formatDate(d.deliveredAt)}</small>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </>
+      )}
     </DashboardShell>
   );
 }
