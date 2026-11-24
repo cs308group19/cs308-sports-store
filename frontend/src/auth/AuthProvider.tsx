@@ -18,6 +18,7 @@ interface MeResponse {
   id: string;
   email: string;
   fullName: string;
+  homeAddress: string | null;
   role: ApiRole;
 }
 
@@ -42,7 +43,13 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 async function fetchCurrentUser(): Promise<SessionUser> {
   const me = await apiFetch<MeResponse>("/auth/me");
-  return { id: me.id, name: me.fullName, email: me.email, role: roleFromApi(me.role) };
+  return {
+    id: me.id,
+    name: me.fullName,
+    email: me.email,
+    homeAddress: me.homeAddress,
+    role: roleFromApi(me.role),
+  };
 }
 
 /**
