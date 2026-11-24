@@ -6,6 +6,7 @@ NestJS API for the CS308 online store (Team 19). It verifies Supabase logins, en
 
 - **Auth and users only.** `POST /api/auth/register`, `GET /api/auth/me`, `GET /api/health`, plus three placeholder endpoints under `/api/staff/*` that show how roles are enforced.
 - **Invoices (SCRUM-25, SCRUM-26).** `GET /api/me/invoices/:id` returns the signed-in customer's invoice, built from the records saved at order time. `GET /api/me/invoices/:id/pdf` returns the same invoice as a PDF download. Another customer's invoice, or one that does not exist, answers `404`. After checkout commits, `InvoicesService.sendInvoiceEmail(invoiceId)` emails the PDF and records `email_status` (`sent` or `failed`) on the invoice; it never throws.
+- **Checkout (SCRUM-22, SCRUM-23, SCRUM-24).** `POST /api/me/checkout` accepts `deliveryRecipient`, `deliveryAddress`, `cardholderName`, `cardNumber`, `expiry` (`MM/YY`) and `cvv` as strings, plus `reviewedCart: { items: [{ productId, quantity, lineTotalCents }], totalCents }` from the checkout summary. The server uses its own prices and checks that the reviewed cart still matches. A signed-in customer receives `201 { orderId, orderNumber, invoiceId }` on approval, `402` on a decline or `409` for an empty or changed cart or insufficient stock. The simulated bank only approves `4242 4242 4242 4242`. Use fictional card details.
 - Login happens in the browser against Supabase Auth. The browser then sends the access token to this API as `Authorization: Bearer <token>`.
 
 ## How authentication works

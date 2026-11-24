@@ -9,6 +9,10 @@ describe("cartTotals", () => {
     expect(cartTotals([])).toEqual({ subtotal: 0, delivery: 0, tax: 0, total: 0 });
   });
 
+  it("charges delivery when the cart has products and their paid subtotal is zero", () => {
+    expect(cartTotals([line(0, 1)])).toEqual({ subtotal: 0, delivery: 8, tax: 0, total: 8 });
+  });
+
   it("charges delivery and 8% tax below the free-delivery amount", () => {
     expect(cartTotals([line(20, 2), line(10, 1)])).toEqual({
       subtotal: 50,
