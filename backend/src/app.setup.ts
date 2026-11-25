@@ -1,6 +1,7 @@
 import { ValidationPipe, type INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import { CheckoutValidationFilter } from './checkout/checkout-validation.filter.js';
 import type { Env } from './config/env.js';
 
 /** Shared by main.ts and the e2e tests so both run with the same pipes, prefix and CORS. */
@@ -28,5 +29,6 @@ export function configureApp(app: INestApplication) {
       transform: true,
     }),
   );
+  app.useGlobalFilters(new CheckoutValidationFilter(app.getHttpAdapter()));
   app.enableShutdownHooks();
 }
