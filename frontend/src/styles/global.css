@@ -2701,3 +2701,20 @@ footer {
     break-inside: avoid;
   }
 }
+.setup-message {
+  max-width: 620px;
+  margin: 80px auto;
+  padding: 32px;
+  background: white;
+  border: 1px solid #ffd1c0;
+  border-radius: 8px;
+  line-height: 1.6;
+}
+.setup-message h1 {
+  margin-top: 0;
+}
+.setup-message code {
+  background: var(--soft);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
