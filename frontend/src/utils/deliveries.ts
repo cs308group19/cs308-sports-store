@@ -68,13 +68,18 @@ const STATUS_RANK: Record<DeliveryStatus, number> = {
   cancelled: 3,
 };
 
+/** Ids above Number.MAX_SAFE_INTEGER arrive as strings, so they are compared as BigInt. */
+function compareIds(a: Delivery["id"], b: Delivery["id"]): number {
+  return BigInt(a) < BigInt(b) ? -1 : BigInt(a) > BigInt(b) ? 1 : 0;
+}
+
 /** The server's order: processing, then in transit, then delivered, oldest first in each. */
 export function sortDeliveries(rows: Delivery[]): Delivery[] {
   return [...rows].sort(
     (a, b) =>
       STATUS_RANK[a.status] - STATUS_RANK[b.status] ||
       Date.parse(a.createdAt) - Date.parse(b.createdAt) ||
-      Number(a.id) - Number(b.id),
+      compareIds(a.id, b.id),
   );
 }
 
