@@ -13,8 +13,8 @@ import { SupabaseAdminService } from '../src/supabase/supabase-admin.service.js'
 /**
  * SCRUM-34. The product manager's delivery list and status changes through the real guards,
  * validation and routing, with an in-memory stand-in for the orders and deliveries tables.
- * Checkout is not merged yet, so each test creates its own order and delivery rows the way the
- * shared order contract describes them (one row per order item, status processing).
+ * Each test creates its own order and delivery rows the way the shared order contract describes
+ * them (one row per order item, status processing).
  */
 describe('Deliveries (e2e)', () => {
   let app: INestApplication;
