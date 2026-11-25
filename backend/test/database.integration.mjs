@@ -908,9 +908,9 @@ void test('search indexes live with pg_trgm in extensions and serve ILIKE', asyn
   }
 });
 
-// SCRUM-34. Delivery list and status changes on the real tables. Checkout is not merged yet, so
-// the order, its items and one delivery row per item are inserted here as the order contract
-// describes them.
+// SCRUM-34. Delivery list and status changes on the real tables. To control every row, most of
+// these tests insert the order, its items and one delivery row per item themselves, as the order
+// contract describes them. The last one starts from a real checkout.
 async function insertStaff(role, email) {
   const id = randomUUID();
   await sql('INSERT INTO auth.users (id) VALUES ($1)', [id]);
@@ -1086,4 +1086,101 @@ void test('delivering the two items of one order at the same time still delivers
     assert.equal(order.status, 'delivered', `round ${round}`);
     assert.ok(order.delivered_at instanceof Date);
   }
+});
+
+void test('the deliveries of a real two-item checkout are listed and the order stays open until the last is delivered', async () => {
+  const manager = await insertStaff(
+    'product_manager',
+    'pm-db-5@example.invalid',
+  );
+  const auth = `Bearer ${await tokenFor(manager)}`;
+  const account = await checkoutCustomer();
+  const first = await checkoutProduct('Checkout delivery first product');
+  const second = await checkoutProduct('Checkout delivery second product', {
+    price: '30.00',
+  });
+  await cartAdd(account, first, 2);
+  await cartAdd(account, second);
+  const { body: placed } = await checkout(
+    account,
+    await reviewedCartFor(account),
+  ).expect(201);
+  await waitForInvoiceEmail(placed.invoiceId);
+
+  const listed = async () => {
+    const { body } = await server()
+      .get('/api/staff/deliveries')
+      .set('Authorization', auth)
+      .expect(200);
+    return body.filter((row) => row.orderNumber === placed.orderNumber);
+  };
+  const orderRow = () =>
+    one('SELECT status, delivered_at FROM public.orders WHERE id = $1', [
+      placed.orderId,
+    ]);
+
+  const rows = await listed();
+  assert.deepEqual(
+    rows.map((row) => [
+      row.productName,
+      row.quantity,
+      row.totalPrice,
+      row.status,
+      row.isCompleted,
+      row.deliveredAt,
+    ]),
+    [
+      ['Checkout delivery first product', 2, 40, 'processing', false, null],
+      ['Checkout delivery second product', 1, 30, 'processing', false, null],
+    ],
+  );
+  for (const row of rows) {
+    assert.equal(String(row.orderId), placed.orderId);
+    assert.equal(row.customerId, account.id);
+    assert.equal(row.deliveryAddress, checkoutInput.deliveryAddress);
+  }
+  assert.deepEqual(await orderRow(), {
+    status: 'processing',
+    delivered_at: null,
+  });
+
+  // The order takes the status of its least advanced delivery.
+  const [firstId, secondId] = rows.map((row) => row.id);
+  for (const [id, status, orderStatus] of [
+    [firstId, 'in_transit', 'processing'],
+    [secondId, 'in_transit', 'in_transit'],
+    [firstId, 'delivered', 'in_transit'],
+    [secondId, 'delivered', 'delivered'],
+  ]) {
+    const step = `delivery ${id} to ${status}`;
+    const { body } = await server()
+      .patch(`/api/staff/deliveries/${id}`)
+      .set('Authorization', auth)
+      .send({ status })
+      .expect(200);
+    assert.equal(body.delivery.status, status, step);
+    assert.equal(body.order.status, orderStatus, step);
+    const order = await orderRow();
+    assert.equal(order.status, orderStatus, step);
+    if (orderStatus === 'delivered') {
+      assert.ok(order.delivered_at instanceof Date, step);
+      assert.equal(body.order.deliveredAt, order.delivered_at.toISOString());
+      assert.equal(body.delivery.deliveredAt, body.order.deliveredAt);
+    } else {
+      assert.equal(order.delivered_at, null, step);
+      assert.equal(body.order.deliveredAt, null, step);
+    }
+  }
+
+  assert.deepEqual(
+    (await listed()).map((row) => [
+      row.status,
+      row.isCompleted,
+      row.deliveredAt !== null,
+    ]),
+    [
+      ['delivered', true, true],
+      ['delivered', true, true],
+    ],
+  );
 });
