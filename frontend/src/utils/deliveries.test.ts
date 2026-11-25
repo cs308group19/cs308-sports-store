@@ -92,6 +92,17 @@ describe("list order", () => {
     expect(sorted.map((r) => r.id)).toEqual([4, 2, 3, 1]);
   });
 
+  it("breaks a timestamp tie by id, exactly even above Number.MAX_SAFE_INTEGER", () => {
+    // As numbers both of these round to 9007199254740992.
+    const higher = { ...row(1, "processing"), id: "9007199254740993" };
+    const lower = { ...row(2, "processing"), id: "9007199254740992" };
+
+    expect(sortDeliveries([higher, lower]).map((r) => r.id)).toEqual([lower.id, higher.id]);
+    expect(sortDeliveries([lower, higher]).map((r) => r.id)).toEqual([lower.id, higher.id]);
+    // A small id stays a number in the API and still sorts before a large one.
+    expect(sortDeliveries([higher, row(7, "processing")]).map((r) => r.id)).toEqual([7, higher.id]);
+  });
+
   it("swaps an updated row in and keeps the order", () => {
     const rows = [row(1, "processing", "2026-11-01T00:00:00Z"), row(2, "processing", "2026-11-02T00:00:00Z")];
 
