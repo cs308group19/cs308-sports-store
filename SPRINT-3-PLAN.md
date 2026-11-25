@@ -25,14 +25,14 @@ Each card has **one owner**. The owner makes every frontend, backend, migration 
 |---|---:|---:|---|---|
 | Emre Tutal | 4 | 12 | `SCRUM-22-23-24-checkout-payment` — SCRUM-22, SCRUM-23, SCRUM-24 | SCRUM-71 |
 | Rayen Tabassi | 4 | 11 | `SCRUM-25-26-invoices` — SCRUM-25, SCRUM-26<br>`SCRUM-34-deliveries` — SCRUM-34<br>`SCRUM-70-frontend-notes` — SCRUM-70 | — |
-| Yiğit Turan | 3 | 9 | `SCRUM-17-cart-merge` — SCRUM-17<br>`SCRUM-61-62-regression-tests` — SCRUM-61, SCRUM-62 | — |
+| Yiğit Turan | 2 | 6 | `SCRUM-61-62-regression-tests` — SCRUM-61, SCRUM-62 | — |
 | Baran Aksoy | 4 | 8 | `SCRUM-31-32-33-reviews` — SCRUM-31, SCRUM-32, SCRUM-33 | SCRUM-72 |
-| Sezgin Berk Özer | 3 | 6 | `SCRUM-27-order-history` — SCRUM-27<br>`SCRUM-15-29-stock-popularity` — SCRUM-15, SCRUM-29 | — |
+| Sezgin Berk Özer | 4 | 9 | `SCRUM-17-cart-merge` — SCRUM-17<br>`SCRUM-27-order-history` — SCRUM-27<br>`SCRUM-15-29-stock-popularity` — SCRUM-15, SCRUM-29 | — |
 | Naz Üstün | 4 | 6 | `SCRUM-43-65-customer-profile` — SCRUM-43, SCRUM-65<br>`SCRUM-67-env-setup-message` — SCRUM-67 | SCRUM-35 |
 
 The whole team attends the demo and the meetings. Preparing a card, coordinating it and adding its closing evidence is the owner's job.
 
-The Jira assignees match this table (updated on 22 November).
+SCRUM-17 was reassigned from Yiğit to Sezgin in Jira on 24 November.
 
 ## Shared order contract
 
@@ -46,16 +46,16 @@ Checkout, invoices, order history, delivery, popularity and reviews all use the 
 4. `products.stock_quantity`: decreased with a conditional update if there is enough stock; otherwise the whole transaction is rolled back.
 5. `products.popularity`: increased by the quantity sold.
 6. `deliveries`: one row per order item, status `processing`.
-7. `invoices`: invoice number, billed-to name and address, amounts, `email_status = 'pending'`.
+7. `invoices`: invoice number, billed-to name and address copied from the confirmed checkout delivery details, amounts, `email_status = 'pending'`.
 8. The customer's cart is emptied.
 
 The PDF and the email are produced after the transaction commits. A failed email does not undo the order.
 
 **On a declined payment** nothing is written, stock and cart stay as they were, and the customer sees an error message.
 
-**Amounts** are calculated on the server; prices sent by the client are not trusted. The rules match `utils/cartTotals.ts`: the subtotal uses the prices paid, orders under 75 pay a delivery fee of 8, tax is 8% of the subtotal, and everything is worked out in cents. `orders` and `invoices` have no column for the delivery fee, so the SCRUM-22/23/24 PR adds a `delivery_fee` column through a migration.
+**Amounts** are calculated on the server; prices sent by the client are not trusted. The rules match `utils/cartTotals.ts`: the subtotal uses the prices paid, a non-empty cart with a subtotal under 75 pays a delivery fee of 8 even when fully discounted, tax is 8% of the subtotal, and everything is worked out in cents. The SCRUM-22/23/24 migration adds `delivery_fee` to `orders` and `invoices`.
 
-**The mock bank** decides by card number. `4242 4242 4242 4242`, which passes the Luhn check, is approved and `4000 0000 0000 0002` is declined. The demo uses only these fictional numbers.
+**The mock bank** approves only `4242 4242 4242 4242`. Other valid numbers are declined, including `4000 0000 0000 0002`. The demo uses only these fictional numbers.
 
 **Statuses** only move forward: `processing` → `in_transit` → `delivered`. An order's status is that of its least advanced delivery row. The order becomes `delivered`, and `orders.delivered_at` is set, when its last item is delivered. Ratings and comments are per order item: that item's delivery row must be `delivered`.
 
@@ -63,7 +63,7 @@ The PDF and the email are produced after the transaction commits. A failed email
 
 | Purpose | Endpoint | Card |
 |---|---|---|
-| Payment and order | `POST /api/me/checkout` → `201 { orderId, orderNumber, invoiceId }`, declined `402`, not enough stock `409` | SCRUM-22/23/24 |
+| Payment and order | `POST /api/me/checkout` → `201 { orderId, orderNumber, invoiceId }`, declined `402`, stale cart or insufficient stock `409` | SCRUM-22/23/24 |
 | Order history | `GET /api/me/orders` | SCRUM-27 |
 | Invoice and PDF | `GET /api/me/invoices/:id`, `GET /api/me/invoices/:id/pdf` | SCRUM-25/26 |
 | Delivery list and status | `GET /api/staff/deliveries`, `PATCH /api/staff/deliveries/:id` | SCRUM-34 |
@@ -80,7 +80,7 @@ Errors use NestJS's default `{ statusCode, message, error }` shape. A record tha
 |---|---|
 | [SCRUM-22](https://project308.atlassian.net/browse/SCRUM-22) | The return after login is in `main`. Cardholder, number (Luhn), expiry date (not in the past) and CVV (3–4 digits) are validated both in the form and in the backend DTO. The delivery address is prefilled from the profile. Evidence: a guest logs in with a cart and returns to checkout with the same cart. A test shows the card number and CVV appear in no record, log or response. |
 | [SCRUM-23](https://project308.atlassian.net/browse/SCRUM-23) | The mock bank approves and declines with the numbers in the contract. On approval, every record in the contract is written and the response carries `orderId` and `invoiceId`. On decline, the customer sees an error. `npm run test:database` verifies that row counts, stock and cart are unchanged after a decline. |
-| [SCRUM-24](https://project308.atlassian.net/browse/SCRUM-24) | The stock check and decrease happen inside the order transaction. Not enough stock returns `409` and writes nothing. A test on a real PostgreSQL shows that when two customers buy the last item at the same time, only one succeeds. The `delivery_fee` migration and Prisma model are also in this PR. |
+| [SCRUM-24](https://project308.atlassian.net/browse/SCRUM-24) | The stock check and decrease happen inside the order transaction. Insufficient stock or a mismatch with the cart and amounts reviewed by the customer returns `409` and writes nothing. Checkout reloads the cart for the customer to review. Real PostgreSQL tests cover competing purchases of the last item and stale cart quantities or prices. The `delivery_fee` migration and Prisma model are also in this PR. |
 
 ### Invoices and delivery — Rayen
 
@@ -90,11 +90,10 @@ Errors use NestJS's default `{ statusCode, message, error }` shape. A record tha
 | [SCRUM-26](https://project308.atlassian.net/browse/SCRUM-26) | The PDF is built from the same invoice data and emailed to the customer after approval. On success `email_status = 'sent'` and `emailed_at` are written; on failure `failed` and `email_error`. The order and the invoice stay available even if the email fails. Delivery is shown in a local test mailbox (Mailpit, Ethereal or similar). SMTP settings are added to `backend/.env.example`; no real password is committed. |
 | [SCRUM-34](https://project308.atlassian.net/browse/SCRUM-34) | The `Deliveries` page shows delivery number, customer ID, product, quantity, total, address and completion from the `deliveries` table. Status moves forward in the order set by the contract, and `is_completed` and `delivered_at` are set on `delivered`. The endpoint is open only to product managers; customers and sales managers get `403`. A test shows that in a multi-item order the order status changes by the contract rule and shows up in the customer's history. |
 
-### Cart and regression tests — Yiğit
+### Regression tests — Yiğit
 
 | Card | Remaining work and closing evidence |
 |---|---|
-| [SCRUM-17](https://project308.atlassian.net/browse/SCRUM-17) | The merge and the stock and 99 limits work in `main`. What is left: read the guest cart, add it to the customer cart and empty it in one transaction, with the guest cart locked. A test added to `npm run test:database` shows that two simultaneous merge requests for the same guest cart do not add its products twice. This PR also deletes `backend/src/cart/dto/dasd`, which was added by mistake. |
 | [SCRUM-61](https://project308.atlassian.net/browse/SCRUM-61) | At least 10 cases. Search and sort tests are in `main`. Missing coverage: order statuses only move forward, the status rule for multi-item orders, the 1–5 rating limit, only a delivered item owned by the customer can be reviewed, one rating per item. |
 | [SCRUM-62](https://project308.atlassian.net/browse/SCRUM-62) | At least 10 cases. Cart request, login and totals tests are in `main`. Missing coverage: simultaneous merge, request above stock, card validation, order and stock unchanged after a declined payment, stock decrease after an order. |
 
@@ -106,10 +105,11 @@ Errors use NestJS's default `{ statusCode, message, error }` shape. A record tha
 | [SCRUM-32](https://project308.atlassian.net/browse/SCRUM-32) | `ReviewForm` moves from sample data to the real endpoint. A comment on a delivered item owned by the customer is saved as `pending`. The product page shows only approved comments, and a test shows a pending comment is not visible. |
 | [SCRUM-33](https://project308.atlassian.net/browse/SCRUM-33) | `ReviewQueue` shows the real pending comments. An approved comment is published; a rejected one stays hidden. `moderated_by` and `moderated_at` are written. An API test shows customers and sales managers get `403`. |
 
-### Order history, stock and popularity — Sezgin Berk
+### Cart, order history, stock and popularity — Sezgin Berk
 
 | Card | Remaining work and closing evidence |
 |---|---|
+| [SCRUM-17](https://project308.atlassian.net/browse/SCRUM-17) | The merge and the stock and 99 limits work in `main`. What is left: read the guest cart, add it to the customer cart and empty it in one transaction, with the guest cart locked. A test added to `npm run test:database` shows that two simultaneous merge requests for the same guest cart do not add its products twice. This PR also deletes `backend/src/cart/dto/dasd`, which was added by mistake. |
 | [SCRUM-27](https://project308.atlassian.net/browse/SCRUM-27) | The `Orders` page moves from sample data to `GET /api/me/orders`. A customer sees only their own orders, newest first. Each order shows its products, purchase total and `processing`, `in_transit` or `delivered` status. A customer with no orders sees an empty-state message. An e2e test shows a second account's orders do not appear in the list. |
 | [SCRUM-15](https://project308.atlassian.net/browse/SCRUM-15) | The stock display is in `main`. After a real order, the stock on the product list and detail page goes down. When the last item is bought, `Out of stock` shows. If the page shows stale stock, its data is refreshed after the order. |
 | [SCRUM-29](https://project308.atlassian.net/browse/SCRUM-29) | Price sorting in `main` uses the discounted price. Popularity comes only from sales: checkout adds the quantity sold, and the hand-written popularity values in the seed are removed. A test shows a product moves up in the popularity order after an order, and that category, search and sort work together. |

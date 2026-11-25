@@ -21,5 +21,9 @@ export function applyDiscount(listPrice: number, discountRate: number): number {
   if (discountRate < 0 || discountRate > 100) {
     throw new RangeError('Discount rate must be between 0 and 100.');
   }
-  return roundToCents(listPrice * (1 - discountRate / 100));
+  // Both database inputs have two decimal places. Round the retained cents once.
+  const listCents = BigInt(Math.round(listPrice * 100));
+  const retainedBasisPoints = BigInt(10_000 - Math.round(discountRate * 100));
+  const paidCents = (listCents * retainedBasisPoints + 5_000n) / 10_000n;
+  return Number(paidCents) / 100;
 }
