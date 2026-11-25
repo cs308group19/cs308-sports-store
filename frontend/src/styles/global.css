@@ -1679,6 +1679,10 @@ td {
   background: #fbeaea;
   color: #b73737;
 }
+.status.blue {
+  background: #e6eefb;
+  color: #1f5fbf;
+}
 .orange-status {
   color: #c94d1d;
   background: var(--orange-light);
