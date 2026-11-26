@@ -13,8 +13,9 @@ class FakeProducts implements ProductLookup {
 }
 
 const setup = (products: ProductSnapshot[] = []) => {
-  const store = new InMemoryCartStore();
-  const service = new CartService(store, new FakeProducts(products));
+  const lookup = new FakeProducts(products);
+  const store = new InMemoryCartStore(lookup);
+  const service = new CartService(store, lookup);
   return { store, service };
 };
 

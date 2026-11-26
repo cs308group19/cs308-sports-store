@@ -396,6 +396,27 @@ void test('two merges of the same guest cart at the same time copy it once', asy
   assert.deepEqual(guest.body, { items: [], total: 0 });
 });
 
+void test('a merge without a guest cart inserts no cart row', async () => {
+  // The frontend merges on every page load of a signed-in customer, usually with no guest cart.
+  const auth = `Bearer ${await tokenFor(customer.id)}`;
+  const unknownGuest = randomUUID();
+  const before = await one('SELECT count(*)::int AS carts FROM public.carts');
+
+  await server()
+    .post('/api/me/cart/merge')
+    .set('Authorization', auth)
+    .set('X-Cart-Token', unknownGuest)
+    .expect(200);
+
+  const after = await one('SELECT count(*)::int AS carts FROM public.carts');
+  assert.equal(after.carts, before.carts);
+  const guest = await one(
+    'SELECT count(*)::int AS carts FROM public.carts WHERE guest_token = $1',
+    [unknownGuest],
+  );
+  assert.equal(guest.carts, 0);
+});
+
 void test('constraints reject impossible products and cart rows', async () => {
   const product = ids['Road Racer'];
   for (const change of [

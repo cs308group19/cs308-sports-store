@@ -3,6 +3,7 @@ import type {
   CartItem,
   CartStore,
   MergeChange,
+  ProductLookup,
 } from './cart.types.js';
 
 /**
@@ -11,6 +12,11 @@ import type {
  */
 export class InMemoryCartStore implements CartStore {
   private readonly carts = new Map<string, CartItem[]>();
+
+  /** `products` gives the stock a merge caps at, like the products table does for PrismaCartStore. */
+  constructor(
+    private readonly products: ProductLookup = { findById: async () => null },
+  ) {}
   /** The last pending update per owner, so updates to one cart run one after the other. */
   private readonly queues = new Map<string, Promise<unknown>>();
 
@@ -43,10 +49,16 @@ export class InMemoryCartStore implements CartStore {
     const next = previous
       .catch(() => undefined)
       .then(async () => {
-        const merged = await change(
-          await this.load(guestKey),
-          await this.load(userKey),
-        );
+        const guestItems = await this.load(guestKey);
+        const userItems = await this.load(userKey);
+        if (guestItems.length === 0) return userItems;
+
+        const stockById = new Map<string, number>();
+        for (const item of guestItems) {
+          const product = await this.products.findById(item.productId);
+          if (product) stockById.set(item.productId, product.stock);
+        }
+        const merged = change(guestItems, userItems, stockById);
         this.carts.set(userKey, copy(merged));
         this.carts.set(guestKey, []);
         return copy(merged);
