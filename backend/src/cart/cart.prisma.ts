@@ -6,6 +6,7 @@ import type {
   CartChange,
   CartItem,
   CartStore,
+  MergeChange,
   ProductLookup,
   ProductSnapshot,
 } from './cart.types.js';
@@ -36,41 +37,97 @@ export class PrismaCartStore implements CartStore {
     const owner = cartOwnerWhere(ownerKey);
     return this.prisma.$transaction(
       async (tx) => {
-        // One statement creates the cart on first use or, if it exists, locks its row until the
-        // transaction ends. Another request for this cart waits here and then sees our change.
-        const [cart] =
-          'guestToken' in owner
-            ? await tx.$queryRaw<{ id: bigint }[]>`
-              INSERT INTO public.carts (guest_token) VALUES (${owner.guestToken})
-              ON CONFLICT (guest_token) DO UPDATE SET updated_at = now()
-              RETURNING id`
-            : await tx.$queryRaw<{ id: bigint }[]>`
-              INSERT INTO public.carts (user_id) VALUES (${owner.userId}::uuid)
-              ON CONFLICT (user_id) DO UPDATE SET updated_at = now()
-              RETURNING id`;
-
-        const current = await tx.cartItem.findMany({
-          where: { cartId: cart.id },
-          orderBy: { id: 'asc' },
-          select: { productId: true, quantity: true },
-        });
-        const next = await change(current.map(toCartItem));
-
-        await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
-        if (next.length > 0) {
-          await tx.cartItem.createMany({
-            data: next.map((item) => ({
-              cartId: cart.id,
-              productId: BigInt(item.productId),
-              quantity: item.quantity,
-            })),
-          });
-        }
+        const cartId = await lockCart(tx, owner);
+        const current = await readItems(tx, cartId);
+        const next = await change(current);
+        await replaceItems(tx, cartId, next);
         return next;
       },
-      // The lock wait counts towards the timeout, so leave room for a few queued requests.
-      { maxWait: 10_000, timeout: 15_000 },
+      TRANSACTION_OPTIONS,
     );
+  }
+
+  /**
+   * SCRUM-17. The guest cart is locked first and the customer cart second, in every merge, so two
+   * merges can wait for each other but never deadlock. A second merge of the same guest cart waits
+   * for the first, then finds it empty and copies nothing.
+   */
+  async merge(
+    guestKey: string,
+    userKey: string,
+    change: MergeChange,
+  ): Promise<CartItem[]> {
+    const guest = cartOwnerWhere(guestKey);
+    const user = cartOwnerWhere(userKey);
+    return this.prisma.$transaction(async (tx) => {
+      const guestCartId = await lockCart(tx, guest);
+      const userCartId = await lockCart(tx, user);
+      const guestItems = await readItems(tx, guestCartId);
+      const userItems = await readItems(tx, userCartId);
+      if (guestItems.length === 0) return userItems;
+
+      const next = await change(guestItems, userItems);
+      await replaceItems(tx, userCartId, next);
+      await tx.cartItem.deleteMany({ where: { cartId: guestCartId } });
+      return next;
+    }, TRANSACTION_OPTIONS);
+  }
+}
+
+// The lock wait counts towards the timeout, so leave room for a few queued requests.
+const TRANSACTION_OPTIONS = { maxWait: 10_000, timeout: 15_000 };
+
+type PrismaTransaction = Parameters<
+  Parameters<PrismaService['$transaction']>[0]
+>[0];
+
+/**
+ * Creates the cart on first use or, if it exists, locks its row until the transaction ends. Another
+ * transaction for this cart waits here and then sees everything the first one wrote.
+ */
+async function lockCart(
+  tx: PrismaTransaction,
+  owner: ReturnType<typeof cartOwnerWhere>,
+): Promise<bigint> {
+  const [cart] =
+    'guestToken' in owner
+      ? await tx.$queryRaw<{ id: bigint }[]>`
+        INSERT INTO public.carts (guest_token) VALUES (${owner.guestToken})
+        ON CONFLICT (guest_token) DO UPDATE SET updated_at = now()
+        RETURNING id`
+      : await tx.$queryRaw<{ id: bigint }[]>`
+        INSERT INTO public.carts (user_id) VALUES (${owner.userId}::uuid)
+        ON CONFLICT (user_id) DO UPDATE SET updated_at = now()
+        RETURNING id`;
+  return cart.id;
+}
+
+async function readItems(
+  tx: PrismaTransaction,
+  cartId: bigint,
+): Promise<CartItem[]> {
+  const rows = await tx.cartItem.findMany({
+    where: { cartId },
+    orderBy: { id: 'asc' },
+    select: { productId: true, quantity: true },
+  });
+  return rows.map(toCartItem);
+}
+
+async function replaceItems(
+  tx: PrismaTransaction,
+  cartId: bigint,
+  items: CartItem[],
+): Promise<void> {
+  await tx.cartItem.deleteMany({ where: { cartId } });
+  if (items.length > 0) {
+    await tx.cartItem.createMany({
+      data: items.map((item) => ({
+        cartId,
+        productId: BigInt(item.productId),
+        quantity: item.quantity,
+      })),
+    });
   }
 }
 

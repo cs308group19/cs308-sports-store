@@ -358,6 +358,44 @@ void test('logging in moves the guest cart into the customer cart', async () => 
   assert.equal(owner.user_id, customer.id);
 });
 
+void test('two merges of the same guest cart at the same time copy it once', async () => {
+  const racerGuest = randomUUID();
+  const auth = `Bearer ${await tokenFor(customer.id)}`;
+  await sql(
+    `DELETE FROM public.cart_items WHERE cart_id =
+       (SELECT id FROM public.carts WHERE user_id = $1)`,
+    [customer.id],
+  );
+  await server()
+    .post('/api/cart/items')
+    .set('X-Cart-Token', racerGuest)
+    .send({ productId: String(ids['Road Racer']), quantity: 3 })
+    .expect(201);
+
+  // Both requests see the guest cart at once. The guest row lock makes the second merge wait
+  // for the first, then it finds the guest cart empty and copies nothing.
+  await Promise.all([
+    server()
+      .post('/api/me/cart/merge')
+      .set('Authorization', auth)
+      .set('X-Cart-Token', racerGuest)
+      .expect(200),
+    server()
+      .post('/api/me/cart/merge')
+      .set('Authorization', auth)
+      .set('X-Cart-Token', racerGuest)
+      .expect(200),
+  ]);
+
+  const owned = await server().get('/api/me/cart').set('Authorization', auth).expect(200);
+  assert.deepEqual(
+    owned.body.items.map((i) => [i.name, i.quantity]),
+    [['Road Racer', 3]],
+  );
+  const guest = await server().get('/api/cart').set('X-Cart-Token', racerGuest);
+  assert.deepEqual(guest.body, { items: [], total: 0 });
+});
+
 void test('constraints reject impossible products and cart rows', async () => {
   const product = ids['Road Racer'];
   for (const change of [
