@@ -17,11 +17,13 @@ export function Home({
   openCategory,
   openProduct,
   addToCart,
+  refreshKey = 0,
 }: {
   navigate: (v: View) => void;
   openCategory: (slug: string) => void;
   openProduct: (p: Product) => void;
   addToCart: (p: Product) => void;
+  refreshKey?: number;
 }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<CategorySummary[]>([]);
@@ -41,7 +43,7 @@ export function Home({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [refreshKey]);
 
   const onSale = products.filter((p) => p.oldPrice);
 

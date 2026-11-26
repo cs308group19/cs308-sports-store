@@ -80,7 +80,6 @@ export async function seedCatalogue(
         warrantyStatus: product.warrantyStatus,
         warrantyTerm: product.warrantyTerm,
         distributor: product.distributor,
-        popularity: product.popularity,
       },
       select: { id: true },
     });

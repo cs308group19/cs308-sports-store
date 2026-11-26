@@ -221,6 +221,34 @@ describe('ProductListService', () => {
       expect(list.map((item) => item.price)).toEqual([100, 100, 50, 30]);
     });
 
+    it('applies the sort together with a search and a category', async () => {
+      category.findUnique.mockResolvedValue({ id: 1n });
+      const list = await service.listProducts({
+        categorySlug: 'running',
+        search: ['pro'],
+        sort: 'price-desc',
+      });
+
+      expect(product.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            isActive: true,
+            category: { slug: 'running' },
+            AND: [
+              {
+                OR: [
+                  { name: { contains: 'pro', mode: 'insensitive' } },
+                  { description: { contains: 'pro', mode: 'insensitive' } },
+                ],
+              },
+            ],
+          },
+          orderBy: [{ popularity: 'desc' }, { id: 'asc' }],
+        }),
+      );
+      expect(names(list)).toEqual(['Popular', 'Same price', 'Discounted', 'Cheap']);
+    });
+
     it('keeps products with the same price most popular first', async () => {
       const asc = await service.listProducts({ sort: 'price-asc' });
       const desc = await service.listProducts({ sort: 'price-desc' });
