@@ -48,3 +48,15 @@ that link has no name or only a generic one, the name describes what the photo s
 | `NK-CLBS-BLU.webp` | Nike Unisex Classic Base Blue Backpack | ceyda/fashion-products-small, id 19318 (listed as "Nike Unisex Classic Base Blue Backpack") | http://assets.myntassets.com/v1/images/style/properties/Nike-Unisex-Classic-Base-Blue-Backpackb792ddd1565926b4797b60841e72ec80_images.jpg | Official product image, used for a university demo (no licence stated) |
 | `AD-CAP-BLU.webp` | Adidas Unisex Blue Cap | ceyda/fashion-products-small, id 25712 (listed as "Adidas Unisex Blue Cap") | http://assets.myntassets.com/v1/images/style/properties/Adidas-Unisex-Blue-Capf0fdfddb2e26677c8067afe9586c6cba_images.jpg | Official product image, used for a university demo (no licence stated) |
 | `NK-SCK3-MIX.webp` | Nike Unisex Pack of 3 Socks | ceyda/fashion-products-small, id 30543 (listed as "Nike Unisex Pack of 3 Socks") | http://assets.myntassets.com/v1/images/style/properties/Nike-Unisex-Pack-of-3-Socks_33ef3a06231283468dd202705a01965c_images.jpg | Official product image, used for a university demo (no licence stated) |
+
+## public/images
+
+| File | Shows | Photographer | Source page | Licence |
+|---|---|---|---|---|
+| `hero-main.webp` | Basketball lay-up in silhouette at sunset | Tan kuen yuen | https://unsplash.com/photos/silhouette-of-boy-jumping-shooting-ball-cXXuAUCTihQ | Unsplash License |
+| `category-running.webp` | Runner on the road | sporlab | https://unsplash.com/photos/pair-of-blue-and-white-adidas-running-shoes-XiZ7pRvCzro | Unsplash License |
+| `category-basketball.webp` | Lay-up in an indoor hall | Omar Abozeid | https://unsplash.com/photos/a-person-jumping-in-the-air-with-a-basketball-d0LAEe0nXeg | Unsplash License |
+| `category-football.webp` | Boot striking a football | Alfonso Scarpa | https://unsplash.com/photos/a-person-kicking-a-soccer-ball-on-a-field-wcNU1-OY-BA | Unsplash License |
+| `category-gym.webp` | Lifter setting up at a barbell | Eduardo Cano Photo Co. | https://unsplash.com/photos/man-in-black-t-shirt-and-black-shorts-holding-black-barbell-qhBpzGubi1I | Unsplash License |
+| `category-sneakers.webp` | White sneakers on concrete | Ian Edokov | https://unsplash.com/photos/feet-in-white-sneakers-on-a-concrete-surface-outdoors-IJlnDTT1UDk | Unsplash License |
+| `category-accessories.webp` | Open sports bag with a bottle and a watch | Andriyko Podilnyk | https://unsplash.com/photos/clear-plastic-tumbler-inside-blue-bag-sGRJ36ogml8 | Unsplash License |
