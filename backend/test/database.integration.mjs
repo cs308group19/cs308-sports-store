@@ -617,6 +617,41 @@ void test('checkout commits product and address snapshots, payment, deliveries a
   }
 });
 
+void test('a real order lowers stock on the product page and moves the product up the popularity order', async () => {
+  const account = await checkoutCustomer();
+  const bought = await checkoutProduct('Popularity bought product');
+  const idle = await checkoutProduct('Popularity idle product');
+  await cartAdd(account, bought, 2);
+  await checkout(account, await reviewedCartFor(account)).expect(201);
+
+  assert.deepEqual(await productStock(bought), { stock_quantity: 8, popularity: 2 });
+  const detail = await server().get(`/api/products/${bought}`).expect(200);
+  assert.equal(detail.body.stock, 8);
+
+  // Sales are the only source of popularity, so the product sold moves ahead of the one not sold.
+  const list = await server().get('/api/products').expect(200);
+  const order = list.body.map((item) => String(item.id));
+  assert.ok(
+    order.indexOf(String(bought)) < order.indexOf(String(idle)),
+    'the product that was bought should come before the one that was not',
+  );
+});
+
+void test('the last item sold makes the product out of stock on the page and in the list', async () => {
+  const account = await checkoutCustomer();
+  const sold = await checkoutProduct('Sold out product', { stock_quantity: 2 });
+  await cartAdd(account, sold, 2);
+  await checkout(account, await reviewedCartFor(account)).expect(201);
+
+  assert.equal((await productStock(sold)).stock_quantity, 0);
+  const detail = await server().get(`/api/products/${sold}`).expect(200);
+  assert.equal(detail.body.stock, 0);
+  const list = await server().get('/api/products').expect(200);
+  const item = list.body.find((row) => String(row.id) === String(sold));
+  assert.ok(item, 'an out-of-stock product stays in the list');
+  assert.equal(item.stock, 0);
+});
+
 void test('declined checkout changes no records, product stock or cart items', async () => {
   const account = await checkoutCustomer();
   const product = await checkoutProduct('Checkout decline product');

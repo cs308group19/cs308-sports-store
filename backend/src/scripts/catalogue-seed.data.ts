@@ -25,7 +25,6 @@ export interface SeedProduct {
   warrantyStatus: 'active' | 'expired' | 'not_applicable';
   warrantyTerm: string;
   distributor: string;
-  popularity: number;
 }
 
 export const SEED_CATEGORIES: readonly SeedCategory[] = [
@@ -53,7 +52,6 @@ export const SEED_PRODUCTS: readonly SeedProduct[] = [
     warrantyStatus: 'active',
     warrantyTerm: '24 months',
     distributor: 'Northstar Athletics',
-    popularity: 98,
   },
   {
     sku: 'RLY-RUN-002',
@@ -70,7 +68,6 @@ export const SEED_PRODUCTS: readonly SeedProduct[] = [
     warrantyStatus: 'not_applicable',
     warrantyTerm: 'No warranty',
     distributor: 'Peak Performance Ltd.',
-    popularity: 69,
   },
   {
     sku: 'RLY-RUN-003',
@@ -87,7 +84,6 @@ export const SEED_PRODUCTS: readonly SeedProduct[] = [
     warrantyStatus: 'active',
     warrantyTerm: '24 months',
     distributor: 'Northstar Athletics',
-    popularity: 64,
   },
   {
     sku: 'RLY-BSK-001',
@@ -104,7 +100,6 @@ export const SEED_PRODUCTS: readonly SeedProduct[] = [
     warrantyStatus: 'active',
     warrantyTerm: '12 months',
     distributor: 'Peak Performance Ltd.',
-    popularity: 94,
   },
   {
     sku: 'RLY-BSK-002',
@@ -121,7 +116,6 @@ export const SEED_PRODUCTS: readonly SeedProduct[] = [
     warrantyStatus: 'active',
     warrantyTerm: '6 months',
     distributor: 'Northstar Athletics',
-    popularity: 80,
   },
   {
     sku: 'RLY-FTB-001',
@@ -138,7 +132,6 @@ export const SEED_PRODUCTS: readonly SeedProduct[] = [
     warrantyStatus: 'active',
     warrantyTerm: '12 months',
     distributor: 'Northstar Athletics',
-    popularity: 96,
   },
   {
     sku: 'RLY-FTB-002',
@@ -155,7 +148,6 @@ export const SEED_PRODUCTS: readonly SeedProduct[] = [
     warrantyStatus: 'active',
     warrantyTerm: '12 months',
     distributor: 'Peak Performance Ltd.',
-    popularity: 88,
   },
   {
     sku: 'RLY-GYM-001',
@@ -172,7 +164,6 @@ export const SEED_PRODUCTS: readonly SeedProduct[] = [
     warrantyStatus: 'active',
     warrantyTerm: '12 months',
     distributor: 'Northstar Athletics',
-    popularity: 82,
   },
   {
     sku: 'RLY-GYM-002',
@@ -189,7 +180,6 @@ export const SEED_PRODUCTS: readonly SeedProduct[] = [
     warrantyStatus: 'expired',
     warrantyTerm: '6 months',
     distributor: 'Peak Performance Ltd.',
-    popularity: 73,
   },
   {
     sku: 'RLY-SNK-001',
@@ -206,7 +196,6 @@ export const SEED_PRODUCTS: readonly SeedProduct[] = [
     warrantyStatus: 'active',
     warrantyTerm: '24 months',
     distributor: 'Northstar Athletics',
-    popularity: 91,
   },
   {
     sku: 'RLY-ACC-001',
@@ -223,7 +212,6 @@ export const SEED_PRODUCTS: readonly SeedProduct[] = [
     warrantyStatus: 'not_applicable',
     warrantyTerm: 'No warranty',
     distributor: 'Peak Performance Ltd.',
-    popularity: 78,
   },
   {
     sku: 'RLY-ACC-002',
@@ -240,6 +228,5 @@ export const SEED_PRODUCTS: readonly SeedProduct[] = [
     warrantyStatus: 'active',
     warrantyTerm: '24 months',
     distributor: 'Northstar Athletics',
-    popularity: 85,
   },
 ];
