@@ -23,7 +23,9 @@ function parseOrderItemId(raw: unknown): bigint {
 @Roles(UserRole.customer)
 @Controller('me/reviews')
 export class ReviewsController {
-  constructor(@Inject(ReviewsService) private readonly reviews: ReviewsService) {}
+  constructor(
+    @Inject(ReviewsService) private readonly reviews: ReviewsService,
+  ) {}
 
   @Post()
   submit(@CurrentUser() customer: AuthUser, @Body() body: SubmitReviewDto) {

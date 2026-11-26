@@ -1,6 +1,7 @@
 import { Transform } from 'class-transformer';
 import {
   IsDefined,
+  IsIn,
   IsInt,
   IsNotEmpty,
   IsString,
@@ -27,4 +28,9 @@ export class SubmitReviewDto {
   @IsNotEmpty()
   @MaxLength(2000)
   comment?: string;
+}
+
+export class ModerateReviewDto {
+  @IsIn(['approved', 'rejected'])
+  status!: 'approved' | 'rejected';
 }
