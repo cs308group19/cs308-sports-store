@@ -404,6 +404,22 @@ describe('CartService.mergeGuestCart (SCRUM-17 transaction)', () => {
       { productId: 'shoe-1', quantity: 1 },
     ]);
   });
+
+  it('caps combined quantities at stock under simultaneous merges with an existing customer cart (SCRUM-62)', async () => {
+    const { service, store } = setup([{ id: 'shoe-1', stock: 4 }]);
+    await store.save('user-1', [{ productId: 'shoe-1', quantity: 2 }]);
+    await store.save('guest-a', [{ productId: 'shoe-1', quantity: 3 }]);
+
+    await Promise.all([
+      service.mergeGuestCart('guest-a', 'user-1'),
+      service.mergeGuestCart('guest-a', 'user-1'),
+    ]);
+
+    await expect(service.getCart('user-1')).resolves.toEqual([
+      { productId: 'shoe-1', quantity: 4 },
+    ]);
+    await expect(service.getCart('guest-a')).resolves.toEqual([]);
+  });
 });
 
 describe('CartService.mergeGuestCart limits', () => {

@@ -1,9 +1,11 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../lib/api", () => ({ apiFetch: vi.fn() }));
 const { apiFetch } = await import("../lib/api");
 const { cataloguePhoto } = await import("./cataloguePhoto");
-const { fetchProducts, productListPath, toProduct } = await import("./productApi");
+const { fetchProductDetail, fetchProducts, productListPath, toProduct } = await import(
+  "./productApi"
+);
 type ProductSummaryResponse = import("./productApi").ProductSummaryResponse;
 
 /** SCRUM-28 and SCRUM-29. The shop sends its filters to GET /api/products. */
@@ -52,6 +54,10 @@ const SHOE: ProductSummaryResponse = {
 
 /** SCRUM-28 and SCRUM-29. Sorting and searching happen on the server; the shop keeps its order. */
 describe("fetchProducts", () => {
+  beforeEach(() => {
+    vi.mocked(apiFetch).mockReset();
+  });
+
   it("asks without signing in and sends the search and the sort", async () => {
     vi.mocked(apiFetch).mockResolvedValueOnce([]);
 
@@ -100,5 +106,28 @@ describe("toProduct", () => {
 
   it.each([null, "", "   "])("uses the catalogue photo when the image is %o", (image) => {
     expect(toProduct({ ...SHOE, image }).image).toBe(cataloguePhoto(SHOE.model));
+  });
+});
+
+/** SCRUM-14 and SCRUM-61. Product detail refreshes live stock and approved comments without login. */
+describe("fetchProductDetail", () => {
+  beforeEach(() => {
+    vi.mocked(apiFetch).mockReset();
+  });
+
+  it("loads a single product without auth and keeps its stock and approved comments", async () => {
+    const comment = {
+      id: 11,
+      author: "Deniz",
+      rating: 5,
+      comment: "Great grip",
+      createdAt: "2026-11-20T10:00:00.000Z",
+    };
+    vi.mocked(apiFetch).mockResolvedValueOnce({ ...SHOE, stock: 0, inStock: false, comments: [comment] });
+
+    const detail = await fetchProductDetail(3);
+
+    expect(apiFetch).toHaveBeenCalledWith("/products/3", { auth: false });
+    expect(detail).toMatchObject({ id: 3, stock: 0, comments: [comment] });
   });
 });
