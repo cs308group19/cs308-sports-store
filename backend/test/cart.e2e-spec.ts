@@ -56,11 +56,30 @@ describe('Cart (e2e)', () => {
   const linesOf = (owner: string) => lines.get(cartIds.get(owner) ?? -1n) ?? [];
 
   const tx = {
-    // The INSERT ... ON CONFLICT that creates or locks a cart. Its only value is the token or id.
+    // Two statements, each with the token or id as its only value: the INSERT ... ON CONFLICT that
+    // creates or locks a cart, and the SELECT ... FOR UPDATE that locks a cart only if it exists.
     $queryRaw: vi.fn((sql: TemplateStringsArray, value: string) => {
-      const kind = sql.join('?').includes('(guest_token)') ? 'guest' : 'user';
-      return Promise.resolve([{ id: cartIdFor(`${kind}:${value}`) }]);
+      const text = sql.join('?');
+      const kind = text.includes('guest_token') ? 'guest' : 'user';
+      const owner = `${kind}:${value}`;
+      if (text.trimStart().startsWith('SELECT')) {
+        const id = cartIds.get(owner);
+        return Promise.resolve(id === undefined ? [] : [{ id }]);
+      }
+      return Promise.resolve([{ id: cartIdFor(owner) }]);
     }),
+    cart: {
+      findUnique: (args: unknown) => prisma.cart.findUnique(args as never),
+    },
+    product: {
+      findMany: vi.fn(({ where }: { where: { id: { in: bigint[] } } }) =>
+        Promise.resolve(
+          where.id.in.includes(1n)
+            ? [{ id: 1n, stockQuantity: productRow.stockQuantity }]
+            : [],
+        ),
+      ),
+    },
     cartItem: {
       findMany: vi.fn(({ where }: { where: { cartId: bigint } }) =>
         Promise.resolve((lines.get(where.cartId) ?? []).map((l) => ({ ...l }))),

@@ -107,14 +107,8 @@ export class CartService {
     if (guest === user) return this.store.load(user);
 
     // Read, add and empty in one step in the store, so nothing is copied twice and nothing is lost.
-    return this.store.merge(guest, user, async (guestItems, userItems) => {
-      // Stock is checked again at checkout, inside the order transaction (SCRUM-24).
-      const stockById = new Map<string, number>();
-      for (const item of guestItems) {
-        const product = await this.products.findById(item.productId);
-        if (product) stockById.set(item.productId, product.stock);
-      }
-
+    // The store reads the stock in the same step; checkout checks it again (SCRUM-24).
+    return this.store.merge(guest, user, (guestItems, userItems, stockById) => {
       const quantities = new Map(
         userItems.map((item) => [item.productId, item.quantity]),
       );

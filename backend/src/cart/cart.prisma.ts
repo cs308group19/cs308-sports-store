@@ -51,6 +51,11 @@ export class PrismaCartStore implements CartStore {
    * SCRUM-17. The guest cart is locked first and the customer cart second, in every merge, so two
    * merges can wait for each other but never deadlock. A second merge of the same guest cart waits
    * for the first, then finds it empty and copies nothing.
+   *
+   * The frontend calls this on every page load of a signed-in customer, so a missing or empty
+   * guest cart costs one locking SELECT and one read, and inserts or locks nothing else. The stock
+   * of the guest cart's products is read with one query on the same transaction, so the merge never
+   * waits for a second database connection while it holds the cart locks.
    */
   async merge(
     guestKey: string,
@@ -60,13 +65,17 @@ export class PrismaCartStore implements CartStore {
     const guest = cartOwnerWhere(guestKey);
     const user = cartOwnerWhere(userKey);
     return this.prisma.$transaction(async (tx) => {
-      const guestCartId = await lockCart(tx, guest);
-      const userCartId = await lockCart(tx, user);
-      const guestItems = await readItems(tx, guestCartId);
-      const userItems = await readItems(tx, userCartId);
-      if (guestItems.length === 0) return userItems;
+      const guestCartId = await lockExistingCart(tx, guest);
+      const guestItems =
+        guestCartId === null ? [] : await readItems(tx, guestCartId);
+      if (guestCartId === null || guestItems.length === 0) {
+        return readOwnerItems(tx, user);
+      }
 
-      const next = await change(guestItems, userItems);
+      const userCartId = await lockCart(tx, user);
+      const userItems = await readItems(tx, userCartId);
+      const stockById = await readStock(tx, guestItems);
+      const next = change(guestItems, userItems, stockById);
       await replaceItems(tx, userCartId, next);
       await tx.cartItem.deleteMany({ where: { cartId: guestCartId } });
       return next;
@@ -100,6 +109,55 @@ async function lockCart(
         ON CONFLICT (user_id) DO UPDATE SET updated_at = now()
         RETURNING id`;
   return cart.id;
+}
+
+/** Locks an existing cart row until the transaction ends. Returns null, and inserts nothing, when there is none. */
+async function lockExistingCart(
+  tx: PrismaTransaction,
+  owner: ReturnType<typeof cartOwnerWhere>,
+): Promise<bigint | null> {
+  const rows =
+    'guestToken' in owner
+      ? await tx.$queryRaw<{ id: bigint }[]>`
+        SELECT id FROM public.carts WHERE guest_token = ${owner.guestToken} FOR UPDATE`
+      : await tx.$queryRaw<{ id: bigint }[]>`
+        SELECT id FROM public.carts WHERE user_id = ${owner.userId}::uuid FOR UPDATE`;
+  return rows[0]?.id ?? null;
+}
+
+/** A plain read of a cart, empty when the owner has none. Creates and locks nothing. */
+async function readOwnerItems(
+  tx: PrismaTransaction,
+  owner: ReturnType<typeof cartOwnerWhere>,
+): Promise<CartItem[]> {
+  const cart = await tx.cart.findUnique({
+    where: owner,
+    select: {
+      items: {
+        orderBy: { id: 'asc' },
+        select: { productId: true, quantity: true },
+      },
+    },
+  });
+  return (cart?.items ?? []).map(toCartItem);
+}
+
+/** Stock of the active products among `items`, in one query. Missing or inactive products have no entry. */
+async function readStock(
+  tx: PrismaTransaction,
+  items: CartItem[],
+): Promise<Map<string, number>> {
+  const ids = [...new Set(items.map((item) => item.productId))]
+    .filter(isDatabaseId)
+    .map((id) => BigInt(id));
+  if (ids.length === 0) return new Map();
+  const products = await tx.product.findMany({
+    where: { id: { in: ids }, isActive: true },
+    select: { id: true, stockQuantity: true },
+  });
+  return new Map(
+    products.map((product) => [product.id.toString(), product.stockQuantity]),
+  );
 }
 
 async function readItems(
