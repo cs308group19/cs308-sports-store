@@ -106,17 +106,9 @@ export class CartService {
     const user = requireOwner(userKey);
     if (guest === user) return this.store.load(user);
 
-    const guestItems = await this.store.load(guest);
-    if (guestItems.length === 0) return this.store.load(user);
-
-    // Stock is looked up before the customer cart is locked, like in addItem.
-    const stockById = new Map<string, number>();
-    for (const item of guestItems) {
-      const product = await this.products.findById(item.productId);
-      if (product) stockById.set(item.productId, product.stock);
-    }
-
-    const merged = await this.store.update(user, (userItems) => {
+    // Read, add and empty in one step in the store, so nothing is copied twice and nothing is lost.
+    // The store reads the stock in the same step; checkout checks it again (SCRUM-24).
+    return this.store.merge(guest, user, (guestItems, userItems, stockById) => {
       const quantities = new Map(
         userItems.map((item) => [item.productId, item.quantity]),
       );
@@ -132,9 +124,6 @@ export class CartService {
         quantity,
       }));
     });
-
-    await this.store.update(guest, () => []);
-    return merged;
   }
 
   /** Stock of a product a customer may buy. Out-of-stock products cannot go in the cart. */
