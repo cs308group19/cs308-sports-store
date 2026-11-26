@@ -10,6 +10,7 @@ import { CartModule } from './cart/cart.module.js';
 import { CheckoutModule } from './checkout/checkout.module.js';
 import { CryptoModule } from './common/crypto/crypto.module.js';
 import { type Env, validateEnv } from './config/env.js';
+import { DeliveriesModule } from './deliveries/deliveries.module.js';
 import { HealthController } from './health/health.controller.js';
 import { InvoicesModule } from './invoices/invoices.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
@@ -31,6 +32,7 @@ import { UsersModule } from './users/users.module.js';
     CartModule,
     InvoicesModule,
     CheckoutModule,
+    DeliveriesModule,
   ],
   controllers: [HealthController, StaffController],
   providers: [
