@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../lib/api", () => ({ apiFetch: vi.fn() }));
-const { productListPath } = await import("./productApi");
+const { apiFetch } = await import("../lib/api");
+const { cataloguePhoto } = await import("./cataloguePhoto");
+const { fetchProducts, productListPath, toProduct } = await import("./productApi");
+type ProductSummaryResponse = import("./productApi").ProductSummaryResponse;
 
 /** SCRUM-28 and SCRUM-29. The shop sends its filters to GET /api/products. */
 describe("productListPath", () => {
@@ -18,5 +21,84 @@ describe("productListPath", () => {
 
   it("encodes characters that mean something in a URL", () => {
     expect(productListPath({ search: "50% & more" })).toBe("/products?q=50%25+%26+more");
+  });
+
+  it("sends only the sort when no category or search is chosen", () => {
+    expect(productListPath({ sort: "price-desc" })).toBe("/products?sort=price-desc");
+  });
+});
+
+const SHOE: ProductSummaryResponse = {
+  id: 3,
+  name: "Court Vision Elite",
+  model: "RLY-2026-02",
+  serial: "R-89878",
+  description: "Basketball shoe",
+  category: "Basketball",
+  categorySlug: "basketball",
+  price: 130.5,
+  oldPrice: 145,
+  discountRate: 10,
+  stock: 8,
+  inStock: true,
+  warrantyStatus: "Active",
+  warranty: "12 months",
+  distributor: "Peak Performance Ltd.",
+  image: "https://cdn.example.com/shoe.webp",
+  popularity: 94,
+  rating: 4.7,
+  reviews: 89,
+};
+
+/** SCRUM-28 and SCRUM-29. Sorting and searching happen on the server; the shop keeps its order. */
+describe("fetchProducts", () => {
+  it("asks without signing in and sends the search and the sort", async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce([]);
+
+    await fetchProducts({ category: "basketball", search: " court ", sort: "price-desc" });
+
+    expect(apiFetch).toHaveBeenCalledWith("/products?category=basketball&q=court&sort=price-desc", {
+      auth: false,
+    });
+  });
+
+  it("keeps the order the server sent", async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce([
+      { ...SHOE, id: 1, price: 20 },
+      { ...SHOE, id: 2, price: 10 },
+      { ...SHOE, id: 3, price: 30 },
+    ]);
+
+    const products = await fetchProducts({ sort: "price-desc" });
+
+    expect(products.map((product) => product.id)).toEqual([1, 2, 3]);
+  });
+
+  it("returns an empty list when the search finds nothing", async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce([]);
+
+    await expect(fetchProducts({ search: "zzz" })).resolves.toEqual([]);
+  });
+});
+
+/** SCRUM-30. The product card reads the stock from toProduct to show "Out of stock". */
+describe("toProduct", () => {
+  it("keeps the price paid, the old price, the stock and the popularity", () => {
+    expect(toProduct(SHOE)).toMatchObject({
+      id: 3,
+      price: 130.5,
+      oldPrice: 145,
+      stock: 8,
+      popularity: 94,
+      image: "https://cdn.example.com/shoe.webp",
+    });
+  });
+
+  it("keeps an out-of-stock product in the list with a stock of zero", () => {
+    expect(toProduct({ ...SHOE, stock: 0, inStock: false })).toMatchObject({ id: 3, stock: 0 });
+  });
+
+  it.each([null, "", "   "])("uses the catalogue photo when the image is %o", (image) => {
+    expect(toProduct({ ...SHOE, image }).image).toBe(cataloguePhoto(SHOE.model));
   });
 });
