@@ -20,7 +20,7 @@ const row = (id: number, status: Delivery["status"], createdAt = "2026-11-20T10:
   orderNumber: "RLY-000001",
   customerId: "1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed",
   productId: 1,
-  productName: "AeroStride Pro",
+  productName: "Nike Women Grey Air Max 2011 Sports Shoes",
   quantity: 1,
   totalPrice: 127.2,
   deliveryAddress: "123 Fast Lane, Istanbul",

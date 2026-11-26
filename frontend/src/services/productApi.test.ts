@@ -32,7 +32,7 @@ describe("productListPath", () => {
 
 const SHOE: ProductSummaryResponse = {
   id: 3,
-  name: "Court Vision Elite",
+  name: "Nike Women Dunk High Skinny Olive Casual Shoes",
   model: "RLY-2026-02",
   serial: "R-89878",
   description: "Basketball shoe",
