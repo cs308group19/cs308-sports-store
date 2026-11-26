@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { Role, Product, CartView } from "./types/models";
+import { ApiError } from "./lib/api";
 import { addCartItem, cartErrorMessage, fetchCart, mergeGuestCart, removeCartItem, setCartQuantity } from "./services/cartApi";
 import { products } from "./services/mockStore";
 import { type View, roleDefaults, roleNav, staffViews } from "./app/navigation";
@@ -46,6 +47,7 @@ export default function App() {
   const [cartLoad, setCartLoad] = useState<{ userId: string; status: "ready" | "failed" } | null>(null);
   const [cartRetry, setCartRetry] = useState(0);
   const [checkoutInvoice, setCheckoutInvoice] = useState<CheckoutInvoice | null>(null);
+  const [catalogueVersion, setCatalogueVersion] = useState(0);
   const [wishlist, setWishlist] = useState<Product[]>([products[0], products[4]]);
   const [shopCategory, setShopCategory] = useState("");
   const [toast, setToast] = useState("");
@@ -159,6 +161,10 @@ export default function App() {
       setCart(await addCartItem(product.id, Boolean(user)));
       notify(`${product.name} added to cart`);
     } catch (error) {
+      if (error instanceof ApiError && (error.status === 400 || error.status === 409)) {
+        // SCRUM-15. Stock may have changed in another session; refresh visible catalogue data.
+        setCatalogueVersion((version) => version + 1);
+      }
       notify(cartErrorMessage(error));
     }
   };
@@ -198,11 +204,17 @@ export default function App() {
           openCategory={openCategory}
           openProduct={openProduct}
           addToCart={addToCart}
+          refreshKey={catalogueVersion}
         />
       );
     if (view === "shop")
       return (
-        <Shop openProduct={openProduct} addToCart={addToCart} initialCategory={shopCategory} />
+        <Shop
+          openProduct={openProduct}
+          addToCart={addToCart}
+          initialCategory={shopCategory}
+          refreshKey={catalogueVersion}
+        />
       );
     if (view === "product")
       return (
@@ -214,6 +226,7 @@ export default function App() {
             notify("Saved to your wishlist");
           }}
           navigate={navigate}
+          refreshKey={catalogueVersion}
         />
       );
     if (view === "cart")
@@ -242,6 +255,7 @@ export default function App() {
             customer={user}
             onSuccess={(id) => {
               setCart({ items: [], total: 0 });
+              setCatalogueVersion((version) => version + 1);
               navigate("invoice", { id, customerId: user.id });
             }}
             onCartRefresh={setCart}
