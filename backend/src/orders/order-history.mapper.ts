@@ -14,6 +14,7 @@ export interface OrderHistoryRecord {
   status: string;
   totalAmount: DecimalLike;
   createdAt: Date;
+  invoice: { id: bigint } | null;
   items: Array<{
     id: bigint;
     productId: bigint;
@@ -55,6 +56,7 @@ export function toOrderHistoryItem(record: OrderHistoryRecord): OrderHistoryItem
     placedAt: record.createdAt.toISOString(),
     status: record.status,
     total: roundToCents(toNumber(record.totalAmount)),
+    invoiceId: record.invoice ? catalogueId(record.invoice.id) : null,
     items: record.items.map(toLine),
   };
 }

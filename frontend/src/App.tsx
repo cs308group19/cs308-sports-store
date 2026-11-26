@@ -288,7 +288,13 @@ export default function App() {
       return <Invoice key={invoiceId ?? "missing"} invoiceId={invoiceId} notify={notify} navigate={navigate} />;
     }
     // Keyed by the account, so signing in as someone else always loads their own orders.
-    if (view === "orders") return user ? <Orders key={user.id} /> : null;
+    if (view === "orders")
+      return user ? (
+        <Orders
+          key={user.id}
+          onOpenInvoice={(invoiceId) => navigate("invoice", { id: invoiceId, customerId: user.id })}
+        />
+      ) : null;
     if (view === "wishlist")
       return <Wishlist products={wishlist} openProduct={openProduct} addToCart={addToCart} />;
     if (view === "profile") return user ? <Profile user={user} navigate={navigate} /> : null;

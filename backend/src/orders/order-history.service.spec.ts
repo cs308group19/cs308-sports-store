@@ -29,8 +29,9 @@ describe('OrderHistoryService', () => {
     const query = prisma.order.findMany.mock.calls[0][0];
     expect(query).not.toHaveProperty('include');
     expect(Object.keys(query.select).sort()).toEqual(
-      ['createdAt', 'id', 'items', 'orderNumber', 'status', 'totalAmount'].sort(),
+      ['createdAt', 'id', 'invoice', 'items', 'orderNumber', 'status', 'totalAmount'].sort(),
     );
+    expect(query.select.invoice).toEqual({ select: { id: true } });
     expect(query.select.items.select).toMatchObject({
       id: true,
       productModel: true,
@@ -51,6 +52,7 @@ describe('OrderHistoryService', () => {
         status: 'delivered',
         totalAmount: '50.00',
         createdAt: new Date('2026-11-01T00:00:00.000Z'),
+        invoice: { id: 9n },
         items: [
           {
             id: 40n,
@@ -71,6 +73,7 @@ describe('OrderHistoryService', () => {
         id: 2,
         status: 'delivered',
         total: 50,
+        invoiceId: 9,
         items: [expect.objectContaining({ id: 40, model: 'SK-01' })],
       }),
     ]);

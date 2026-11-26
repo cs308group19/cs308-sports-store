@@ -27,6 +27,7 @@ describe('Order history (e2e)', () => {
     status: 'in_transit',
     totalAmount: '236.52',
     createdAt: new Date(createdAt),
+    invoice: { id: id + 100n },
     items: [
       {
         id: id * 10n,
@@ -108,6 +109,7 @@ describe('Order history (e2e)', () => {
       id: 3,
       status: 'in_transit',
       total: 236.52,
+      invoiceId: 103,
       items: [
         {
           id: 30,

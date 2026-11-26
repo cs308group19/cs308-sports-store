@@ -10,6 +10,7 @@ const orderHistorySelect = {
   status: true,
   totalAmount: true,
   createdAt: true,
+  invoice: { select: { id: true } },
   items: {
     orderBy: { id: 'asc' as const },
     select: {

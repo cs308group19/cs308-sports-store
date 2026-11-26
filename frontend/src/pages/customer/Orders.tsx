@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Button } from "../../components/ui/Button";
 import { Tracker } from "../../components/ui/Tracker";
 import { money } from "../../utils/format";
 import {
@@ -11,8 +12,8 @@ import {
 import { formatInvoiceDate } from "../../utils/invoiceFormat";
 import type { OrderHistoryItem } from "../../types/orderHistory";
 
-/** SCRUM-27. The customer's orders, newest first, each with its status and products. */
-export function Orders() {
+/** SCRUM-27. The customer's orders, newest first, each with its status, products and invoice. */
+export function Orders({ onOpenInvoice }: { onOpenInvoice: (invoiceId: string) => void }) {
   const [orders, setOrders] = useState<OrderHistoryItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,6 +61,14 @@ export function Orders() {
                   <small>TOTAL</small>
                   <b>{money(order.total)}</b>
                 </div>
+                {order.invoiceId != null && (
+                  <Button
+                    variant="outline"
+                    onClick={() => onOpenInvoice(String(order.invoiceId))}
+                  >
+                    View invoice
+                  </Button>
+                )}
               </div>
 
               {step ? (

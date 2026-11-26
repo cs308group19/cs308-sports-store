@@ -29,5 +29,7 @@ export interface OrderHistoryItem {
   placedAt: string;
   status: OrderHistoryStatus;
   total: number;
+  /** The invoice saved with this order, so the customer can open it again from history. */
+  invoiceId: number | string | null;
   items: OrderHistoryLine[];
 }

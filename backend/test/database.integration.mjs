@@ -1313,6 +1313,7 @@ void test('the deliveries of a real two-item checkout are listed and the order s
     .expect(200);
   assert.equal(history.body[0].orderNumber, placed.orderNumber);
   assert.equal(history.body[0].status, 'delivered');
+  assert.equal(String(history.body[0].invoiceId), String(placed.invoiceId));
 });
 
 void test('GET /api/me/orders returns only the customer’s own orders, newest first (SCRUM-27)', async () => {

@@ -8,6 +8,7 @@ describe('toOrderHistoryItem', () => {
     status: 'in_transit',
     totalAmount: '291.50',
     createdAt: new Date('2026-11-20T09:30:00.000Z'),
+    invoice: null,
     items: [
       {
         id: 21n,
@@ -30,6 +31,7 @@ describe('toOrderHistoryItem', () => {
       placedAt: '2026-11-20T09:30:00.000Z',
       status: 'in_transit',
       total: 291.5,
+      invoiceId: null,
       items: [
         {
           id: 21,
@@ -87,6 +89,10 @@ describe('toOrderHistoryItem', () => {
       [21, 3],
       [23, 3],
     ]);
+  });
+
+  it('keeps the invoice id so the customer can open that invoice again', () => {
+    expect(toOrderHistoryItem(record({ invoice: { id: 44n } })).invoiceId).toBe(44);
   });
 
   it('sends large BIGINT ids as strings so no digits are lost', () => {

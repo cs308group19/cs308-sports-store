@@ -21,5 +21,7 @@ export interface OrderHistoryItem {
   placedAt: string;
   status: OrderHistoryStatus;
   total: number;
+  /** Present when checkout saved an invoice for this order. */
+  invoiceId: number | string | null;
   items: OrderHistoryLine[];
 }
