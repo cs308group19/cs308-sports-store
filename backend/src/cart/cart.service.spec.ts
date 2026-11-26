@@ -379,6 +379,32 @@ describe('CartService concurrent requests', () => {
   });
 });
 
+describe('CartService.mergeGuestCart (SCRUM-17 transaction)', () => {
+  it('copies a guest cart once when two merges of it run at the same time', async () => {
+    const { service, store } = setup([SHOE]);
+    await store.save('guest-a', [{ productId: 'shoe-1', quantity: 2 }]);
+
+    await Promise.all([
+      service.mergeGuestCart('guest-a', 'user-1'),
+      service.mergeGuestCart('guest-a', 'user-1'),
+    ]);
+
+    await expect(service.getCart('user-1')).resolves.toEqual([
+      { productId: 'shoe-1', quantity: 2 },
+    ]);
+    await expect(service.getCart('guest-a')).resolves.toEqual([]);
+  });
+
+  it('moves nothing when the guest cart is no longer there', async () => {
+    const { service, store } = setup([SHOE]);
+    await store.save('user-1', [{ productId: 'shoe-1', quantity: 1 }]);
+
+    await expect(service.mergeGuestCart('guest-a', 'user-1')).resolves.toEqual([
+      { productId: 'shoe-1', quantity: 1 },
+    ]);
+  });
+});
+
 describe('CartService.mergeGuestCart limits', () => {
   it('caps the merged quantity at the per-product maximum', async () => {
     const { service, store } = setup([{ id: 'bulk', stock: 500 }]);

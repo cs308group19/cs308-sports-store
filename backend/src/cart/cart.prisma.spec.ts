@@ -51,6 +51,49 @@ describe('PrismaCartStore.load', () => {
   });
 });
 
+describe('PrismaCartStore.merge (SCRUM-17)', () => {
+  it('locks the guest cart, then the customer cart, and empties the guest cart in the same transaction', async () => {
+    const { prisma, tx, service } = fakePrisma();
+    tx.$queryRaw
+      .mockResolvedValueOnce([{ id: 7n }])
+      .mockResolvedValueOnce([{ id: 8n }]);
+    tx.cartItem.findMany
+      .mockResolvedValueOnce([{ productId: 3n, quantity: 2 }])
+      .mockResolvedValueOnce([]);
+    const change = vi.fn(() => [{ productId: '3', quantity: 2 }]);
+
+    await new PrismaCartStore(service).merge(GUEST, 'user:user-uuid', change);
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(tx.$queryRaw.mock.calls[0][0].join('?')).toContain('guest_token');
+    expect(tx.$queryRaw.mock.calls[1][0].join('?')).toContain('user_id');
+    expect(change).toHaveBeenCalledWith(
+      [{ productId: '3', quantity: 2 }],
+      [],
+    );
+    expect(tx.cartItem.deleteMany).toHaveBeenCalledWith({
+      where: { cartId: 8n },
+    });
+    expect(tx.cartItem.deleteMany).toHaveBeenCalledWith({
+      where: { cartId: 7n },
+    });
+  });
+
+  it('writes nothing when the guest cart is empty', async () => {
+    const { tx, service } = fakePrisma();
+    tx.$queryRaw
+      .mockResolvedValueOnce([{ id: 7n }])
+      .mockResolvedValueOnce([{ id: 8n }]);
+    const change = vi.fn(() => []);
+
+    await new PrismaCartStore(service).merge(GUEST, 'user:user-uuid', change);
+
+    expect(change).not.toHaveBeenCalled();
+    expect(tx.cartItem.deleteMany).not.toHaveBeenCalled();
+    expect(tx.cartItem.createMany).not.toHaveBeenCalled();
+  });
+});
+
 describe('PrismaCartStore.update', () => {
   it('creates or locks the cart and replaces its items inside one transaction', async () => {
     const { prisma, tx, service } = fakePrisma();

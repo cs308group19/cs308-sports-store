@@ -26,7 +26,22 @@ export interface CartStore {
    * `change` throws, nothing is saved and the error is passed on.
    */
   update(ownerKey: string, change: CartChange): Promise<CartItem[]>;
+  /**
+   * SCRUM-17. Moves the guest cart into the customer's cart as one step. `change` receives both
+   * carts and returns the customer's new lines. The guest cart is emptied in the same step, so if
+   * anything fails nothing is moved, and two merges of the same guest cart never copy it twice.
+   */
+  merge(
+    guestKey: string,
+    userKey: string,
+    change: MergeChange,
+  ): Promise<CartItem[]>;
 }
+
+export type MergeChange = (
+  guestItems: CartItem[],
+  userItems: CartItem[],
+) => CartItem[] | Promise<CartItem[]>;
 
 export type CartChange = (
   items: CartItem[],

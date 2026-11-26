@@ -1,4 +1,9 @@
-import type { CartChange, CartItem, CartStore } from './cart.types.js';
+import type {
+  CartChange,
+  CartItem,
+  CartStore,
+  MergeChange,
+} from './cart.types.js';
 
 /**
  * In-memory cart storage for the unit tests. The app itself uses PrismaCartStore
@@ -23,6 +28,31 @@ export class InMemoryCartStore implements CartStore {
         return copy(items);
       });
     this.queues.set(ownerKey, next);
+    return next;
+  }
+
+  merge(
+    guestKey: string,
+    userKey: string,
+    change: MergeChange,
+  ): Promise<CartItem[]> {
+    const previous = Promise.all([
+      this.queues.get(guestKey) ?? Promise.resolve(),
+      this.queues.get(userKey) ?? Promise.resolve(),
+    ]);
+    const next = previous
+      .catch(() => undefined)
+      .then(async () => {
+        const merged = await change(
+          await this.load(guestKey),
+          await this.load(userKey),
+        );
+        this.carts.set(userKey, copy(merged));
+        this.carts.set(guestKey, []);
+        return copy(merged);
+      });
+    this.queues.set(guestKey, next);
+    this.queues.set(userKey, next);
     return next;
   }
 
