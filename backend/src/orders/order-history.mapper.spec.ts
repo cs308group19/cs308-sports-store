@@ -10,8 +10,10 @@ describe('toOrderHistoryItem', () => {
     createdAt: new Date('2026-11-20T09:30:00.000Z'),
     items: [
       {
+        id: 21n,
         productId: 3n,
         productName: 'Court Vision Elite',
+        productModel: 'CV-ELT-25',
         quantity: 2,
         unitPricePaid: '145.75',
         lineTotal: '291.50',
@@ -30,8 +32,10 @@ describe('toOrderHistoryItem', () => {
       total: 291.5,
       items: [
         {
+          id: 21,
           productId: 3,
           name: 'Court Vision Elite',
+          model: 'CV-ELT-25',
           imageUrl: null,
           quantity: 2,
           unitPricePaid: 145.75,
@@ -53,8 +57,10 @@ describe('toOrderHistoryItem', () => {
       record({
         items: [
           {
+            id: 22n,
             productId: 3n,
             productName: 'Old name',
+            productModel: null,
             quantity: 1,
             unitPricePaid: '10',
             lineTotal: '10',
@@ -63,7 +69,24 @@ describe('toOrderHistoryItem', () => {
         ],
       }),
     );
-    expect(item.items[0]).toMatchObject({ name: 'Old name', imageUrl: '/photo.webp' });
+    expect(item.items[0]).toMatchObject({
+      name: 'Old name',
+      model: null,
+      imageUrl: '/photo.webp',
+    });
+  });
+
+  it('gives each line its own id, so the same product twice keeps both lines apart', () => {
+    const line = record().items[0];
+    const item = toOrderHistoryItem(
+      record({
+        items: [line, { ...line, id: 23n, quantity: 1, lineTotal: '145.75' }],
+      }),
+    );
+    expect(item.items.map((l) => [l.id, l.productId])).toEqual([
+      [21, 3],
+      [23, 3],
+    ]);
   });
 
   it('sends large BIGINT ids as strings so no digits are lost', () => {

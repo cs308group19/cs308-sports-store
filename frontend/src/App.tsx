@@ -69,9 +69,10 @@ export default function App() {
     if (user && user.role !== "Customer") setView(roleDefaults[user.role]);
   }, [loading, user]);
 
-  // If the session ends while a staff page is open (expired or revoked), leave that page.
+  // If the session ends while a staff page or the order history is open (expired or revoked),
+  // leave that page.
   useEffect(() => {
-    if (!loading && !user && staffViews.has(view)) setView("home");
+    if (!loading && !user && (staffViews.has(view) || view === "orders")) setView("home");
   }, [loading, user, view]);
 
   useEffect(() => {
@@ -80,9 +81,9 @@ export default function App() {
 
   const navigate = (next: View, invoice: CheckoutInvoice | null = null) => {
     setCheckoutInvoice(invoice);
-    if (next === "checkout" && !user) {
+    if ((next === "checkout" || next === "orders") && !user) {
       setAuthOrigin(view);
-      setReturnTo("checkout");
+      setReturnTo(next);
       setView("login");
       window.history.pushState({}, "", "/auth");
       setMobileOpen(false);
@@ -270,7 +271,8 @@ export default function App() {
         : null;
       return <Invoice key={invoiceId ?? "missing"} invoiceId={invoiceId} notify={notify} navigate={navigate} />;
     }
-    if (view === "orders") return <Orders />;
+    // Keyed by the account, so signing in as someone else always loads their own orders.
+    if (view === "orders") return user ? <Orders key={user.id} /> : null;
     if (view === "wishlist")
       return <Wishlist products={wishlist} openProduct={openProduct} addToCart={addToCart} />;
     if (view === "profile") return <Profile notify={notify} />;

@@ -1,18 +1,22 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
-import {
-  type OrderHistoryRecord,
-  toOrderHistoryItem,
-} from './order-history.mapper.js';
+import { toOrderHistoryItem } from './order-history.mapper.js';
 import type { OrderHistoryItem } from './order-history.types.js';
 
 /** Only what the order history page shows: the order, its lines and each product's photo. */
-const orderHistoryInclude = {
+const orderHistorySelect = {
+  id: true,
+  orderNumber: true,
+  status: true,
+  totalAmount: true,
+  createdAt: true,
   items: {
     orderBy: { id: 'asc' as const },
     select: {
+      id: true,
       productId: true,
       productName: true,
+      productModel: true,
       quantity: true,
       unitPricePaid: true,
       lineTotal: true,
@@ -31,8 +35,8 @@ export class OrderHistoryService {
     const rows = await this.prisma.order.findMany({
       where: { userId },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      include: orderHistoryInclude,
+      select: orderHistorySelect,
     });
-    return rows.map((row) => toOrderHistoryItem(row as OrderHistoryRecord));
+    return rows.map(toOrderHistoryItem);
   }
 }

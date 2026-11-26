@@ -15,8 +15,10 @@ export interface OrderHistoryRecord {
   totalAmount: DecimalLike;
   createdAt: Date;
   items: Array<{
+    id: bigint;
     productId: bigint;
     productName: string;
+    productModel: string | null;
     quantity: number;
     unitPricePaid: DecimalLike;
     lineTotal: DecimalLike;
@@ -31,8 +33,10 @@ function isOrderHistoryStatus(value: string): value is OrderHistoryStatus {
 /** The line is shown as the customer paid for it. The product name is the one stored on the order, so a later rename does not change it. */
 function toLine(item: OrderHistoryRecord['items'][number]): OrderHistoryLine {
   return {
+    id: catalogueId(item.id),
     productId: catalogueId(item.productId),
     name: item.productName,
+    model: item.productModel,
     imageUrl: item.product.imageUrl,
     quantity: item.quantity,
     unitPricePaid: roundToCents(toNumber(item.unitPricePaid)),

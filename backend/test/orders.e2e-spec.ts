@@ -29,8 +29,10 @@ describe('Order history (e2e)', () => {
     createdAt: new Date(createdAt),
     items: [
       {
+        id: id * 10n,
         productId: 3n,
         productName: 'AeroStride Pro',
+        productModel: 'AS-PRO-25',
         quantity: 2,
         unitPricePaid: '80.00',
         lineTotal: '160.00',
@@ -108,8 +110,10 @@ describe('Order history (e2e)', () => {
       total: 236.52,
       items: [
         {
+          id: 30,
           productId: 3,
           name: 'AeroStride Pro',
+          model: 'AS-PRO-25',
           quantity: 2,
           unitPricePaid: 80,
           lineTotal: 160,

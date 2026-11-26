@@ -2,8 +2,12 @@
 export type OrderHistoryStatus = "processing" | "in_transit" | "delivered" | "cancelled";
 
 export interface OrderHistoryLine {
+  /** The order line's own id, unique even when the same product appears twice. */
+  id: number | string;
   productId: number | string;
   name: string;
+  /** The product model stored on the order, used to find the catalogue photo. */
+  model: string | null;
   imageUrl: string | null;
   quantity: number;
   /** What the customer paid for one unit, after any discount. */
