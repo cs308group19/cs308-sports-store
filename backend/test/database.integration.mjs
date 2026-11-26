@@ -619,8 +619,19 @@ void test('checkout commits product and address snapshots, payment, deliveries a
 
 void test('a real order lowers stock on the product page and moves the product up the popularity order', async () => {
   const account = await checkoutCustomer();
-  const bought = await checkoutProduct('Popularity bought product');
+  // `idle` is created first, so with equal popularity it comes first (ties are ordered by id).
+  // Only the order can move `bought` ahead of it.
   const idle = await checkoutProduct('Popularity idle product');
+  const bought = await checkoutProduct('Popularity bought product');
+  const listOrder = async () =>
+    (await server().get('/api/products').expect(200)).body.map((item) => String(item.id));
+
+  const beforeOrder = await listOrder();
+  assert.ok(
+    beforeOrder.indexOf(String(idle)) < beforeOrder.indexOf(String(bought)),
+    'before any order, the older product comes first',
+  );
+
   await cartAdd(account, bought, 2);
   await checkout(account, await reviewedCartFor(account)).expect(201);
 
@@ -629,11 +640,10 @@ void test('a real order lowers stock on the product page and moves the product u
   assert.equal(detail.body.stock, 8);
 
   // Sales are the only source of popularity, so the product sold moves ahead of the one not sold.
-  const list = await server().get('/api/products').expect(200);
-  const order = list.body.map((item) => String(item.id));
+  const afterOrder = await listOrder();
   assert.ok(
-    order.indexOf(String(bought)) < order.indexOf(String(idle)),
-    'the product that was bought should come before the one that was not',
+    afterOrder.indexOf(String(bought)) < afterOrder.indexOf(String(idle)),
+    'after the order, the product that was bought comes first',
   );
 });
 
