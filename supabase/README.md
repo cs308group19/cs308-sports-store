@@ -33,6 +33,8 @@ keeps. At login the backend moves it into the customer's cart (`/api/me/cart/mer
 | `20261117221000_store_domain_schema.sql` | Every store table: catalogue, carts, wishlist, orders, payments, invoices, deliveries, reviews, returns, refunds, notifications, support chat |
 | `20261122160038_product_search_indexes.sql` | `pg_trgm` in the `extensions` schema and trigram indexes on product name and description, used by the shop search (`ILIKE '%word%'`) |
 | `20261122160059_store_number_and_sequence_guards.sql` | Rejects `NaN` in every money column and takes sequence access away from `anon` and `authenticated` |
+| `20261123210122_checkout_delivery_fee.sql` | Adds `delivery_fee` to `orders` and `invoices` with non-negative and non-`NaN` checks |
+| `20261126194500_reset_popularity_to_sales.sql` | Recomputes `products.popularity` from non-cancelled `order_items` sales so previously seeded products drop the old hand-written values |
 
 Apply pending files in this order with the team's Supabase migration workflow
 (`supabase db push`), or run them one by one in the dashboard's SQL editor. Do not
