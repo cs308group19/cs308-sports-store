@@ -1,4 +1,10 @@
-import type { CartChange, CartItem, CartStore } from './cart.types.js';
+import type {
+  CartChange,
+  CartItem,
+  CartStore,
+  MergeChange,
+  ProductLookup,
+} from './cart.types.js';
 
 /**
  * In-memory cart storage for the unit tests. The app itself uses PrismaCartStore
@@ -6,6 +12,11 @@ import type { CartChange, CartItem, CartStore } from './cart.types.js';
  */
 export class InMemoryCartStore implements CartStore {
   private readonly carts = new Map<string, CartItem[]>();
+
+  /** `products` gives the stock a merge caps at, like the products table does for PrismaCartStore. */
+  constructor(
+    private readonly products: ProductLookup = { findById: async () => null },
+  ) {}
   /** The last pending update per owner, so updates to one cart run one after the other. */
   private readonly queues = new Map<string, Promise<unknown>>();
 
@@ -23,6 +34,37 @@ export class InMemoryCartStore implements CartStore {
         return copy(items);
       });
     this.queues.set(ownerKey, next);
+    return next;
+  }
+
+  merge(
+    guestKey: string,
+    userKey: string,
+    change: MergeChange,
+  ): Promise<CartItem[]> {
+    const previous = Promise.all([
+      this.queues.get(guestKey) ?? Promise.resolve(),
+      this.queues.get(userKey) ?? Promise.resolve(),
+    ]);
+    const next = previous
+      .catch(() => undefined)
+      .then(async () => {
+        const guestItems = await this.load(guestKey);
+        const userItems = await this.load(userKey);
+        if (guestItems.length === 0) return userItems;
+
+        const stockById = new Map<string, number>();
+        for (const item of guestItems) {
+          const product = await this.products.findById(item.productId);
+          if (product) stockById.set(item.productId, product.stock);
+        }
+        const merged = change(guestItems, userItems, stockById);
+        this.carts.set(userKey, copy(merged));
+        this.carts.set(guestKey, []);
+        return copy(merged);
+      });
+    this.queues.set(guestKey, next);
+    this.queues.set(userKey, next);
     return next;
   }
 
