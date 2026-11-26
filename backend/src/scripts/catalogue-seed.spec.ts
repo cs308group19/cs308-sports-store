@@ -119,6 +119,19 @@ describe('seedCatalogue', () => {
     });
   });
 
+  it('does not set popularity, so seeded products start at 0 until they sell (SCRUM-29)', async () => {
+    const prisma = fakePrisma();
+
+    await seedCatalogue(prisma as unknown as CatalogueSeedClient);
+
+    expect(prisma.product.create).toHaveBeenCalledTimes(SEED_PRODUCTS.length);
+    for (const [args] of prisma.product.create.mock.calls as unknown as [
+      { data: Record<string, unknown> },
+    ][]) {
+      expect(args.data).not.toHaveProperty('popularity');
+    }
+  });
+
   it('leaves rows that already exist untouched', async () => {
     const prisma = fakePrisma(
       SEED_CATEGORIES.map((c) => c.slug),
