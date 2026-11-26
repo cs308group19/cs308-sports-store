@@ -20,5 +20,6 @@ coverage/
 # Personal Claude Code / agent tooling (each developer sets up their own)
 .agents/
 .claude/
+.cursor/
 .mcp.json
 skills-lock.json
