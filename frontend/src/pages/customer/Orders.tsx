@@ -5,8 +5,10 @@ import {
   fetchOrderHistory,
   ORDER_STATUS_LABEL,
   orderErrorMessage,
+  orderLineImage,
   trackerStep,
 } from "../../services/orderApi";
+import { formatInvoiceDate } from "../../utils/invoiceFormat";
 import type { OrderHistoryItem } from "../../types/orderHistory";
 
 /** SCRUM-27. The customer's orders, newest first, each with its status and products. */
@@ -52,7 +54,7 @@ export function Orders() {
                 </div>
                 <div>
                   <small>PLACED</small>
-                  <b>{new Date(order.placedAt).toLocaleDateString("en-US")}</b>
+                  <b>{formatInvoiceDate(order.placedAt)}</b>
                 </div>
                 <div>
                   <small>TOTAL</small>
@@ -63,13 +65,15 @@ export function Orders() {
               {step ? (
                 <Tracker status={step} />
               ) : (
-                <p className="order-status">Status: {ORDER_STATUS_LABEL[order.status]}</p>
+                <p>
+                  <span className="status red">{ORDER_STATUS_LABEL[order.status]}</span>
+                </p>
               )}
 
               <div className="order-products">
                 {order.items.map((line) => (
-                  <div className="order-product-line" key={`${order.id}-${line.productId}`}>
-                    <img src={line.imageUrl ?? "/images/photo-unavailable.svg"} alt="" />
+                  <div className="order-product-line" key={line.id}>
+                    <img src={orderLineImage(line)} alt="" />
                     <span>
                       <b>{line.name}</b>
                       <small>

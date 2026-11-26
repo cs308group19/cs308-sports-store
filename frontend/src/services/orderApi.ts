@@ -1,6 +1,11 @@
 import { ApiError, apiFetch } from "../lib/api";
 import type { OrderStatus } from "../types/models";
-import type { OrderHistoryItem, OrderHistoryStatus } from "../types/orderHistory";
+import type {
+  OrderHistoryItem,
+  OrderHistoryLine,
+  OrderHistoryStatus,
+} from "../types/orderHistory";
+import { cataloguePhoto } from "./cataloguePhoto";
 
 /** SCRUM-27. The order history page loads the signed-in customer's own orders, newest first. */
 export function fetchOrderHistory(): Promise<OrderHistoryItem[]> {
@@ -34,4 +39,14 @@ export const ORDER_STATUS_LABEL: Record<OrderHistoryStatus, string> = {
 export function orderErrorMessage(error: unknown): string {
   if (error instanceof ApiError) return error.message;
   return "Something went wrong while loading your orders. Please try again.";
+}
+
+/**
+ * The photo of an order line: the uploaded product photo when there is one, otherwise the
+ * catalogue photo for the model saved on the order (the seeded products have no uploaded photo).
+ */
+export function orderLineImage(line: Pick<OrderHistoryLine, "imageUrl" | "model">): string {
+  const uploaded = line.imageUrl?.trim();
+  if (uploaded) return uploaded;
+  return line.model ? cataloguePhoto(line.model) : "/images/photo-unavailable.svg";
 }

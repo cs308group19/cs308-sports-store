@@ -15,7 +15,13 @@ vi.mock("../lib/api", () => ({
   },
 }));
 
-const { fetchOrderHistory, orderErrorMessage, trackerStep } = await import("./orderApi");
+vi.mock("./cataloguePhoto", () => ({
+  cataloguePhoto: (model: string) => `/catalogue/${model}.webp`,
+}));
+
+const { fetchOrderHistory, orderErrorMessage, orderLineImage, trackerStep } = await import(
+  "./orderApi"
+);
 
 describe("orderApi", () => {
   beforeEach(() => {
@@ -51,5 +57,26 @@ describe("orderApi", () => {
     expect(orderErrorMessage(new Error("boom"))).toBe(
       "Something went wrong while loading your orders. Please try again.",
     );
+  });
+
+  describe("orderLineImage", () => {
+    it("uses the uploaded product photo when there is one", () => {
+      expect(orderLineImage({ imageUrl: "/uploads/p.webp", model: "AS-PRO-25" })).toBe(
+        "/uploads/p.webp",
+      );
+    });
+
+    it("falls back to the catalogue photo of the model for seeded products", () => {
+      expect(orderLineImage({ imageUrl: null, model: "AS-PRO-25" })).toBe(
+        "/catalogue/AS-PRO-25.webp",
+      );
+      expect(orderLineImage({ imageUrl: "   ", model: "AS-PRO-25" })).toBe(
+        "/catalogue/AS-PRO-25.webp",
+      );
+    });
+
+    it("shows the placeholder when there is neither a photo nor a model", () => {
+      expect(orderLineImage({ imageUrl: null, model: null })).toBe("/images/photo-unavailable.svg");
+    });
   });
 });
