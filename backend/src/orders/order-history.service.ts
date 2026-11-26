@@ -22,6 +22,12 @@ const orderHistorySelect = {
       unitPricePaid: true,
       lineTotal: true,
       product: { select: { imageUrl: true } },
+      deliveries: {
+        where: { status: 'delivered' as const },
+        select: { id: true },
+        take: 1,
+      },
+      review: { select: { rating: true, comment: true, commentStatus: true } },
     },
   },
 };

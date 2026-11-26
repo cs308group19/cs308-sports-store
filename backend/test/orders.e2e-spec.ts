@@ -38,6 +38,8 @@ describe('Order history (e2e)', () => {
         unitPricePaid: '80.00',
         lineTotal: '160.00',
         product: { imageUrl: null },
+        deliveries: [],
+        review: null,
       },
     ],
   });
@@ -95,16 +97,15 @@ describe('Order history (e2e)', () => {
   const server = () => request(app.getHttpServer());
   const as = async (sub: string) => `Bearer ${await sign({ sub })}`;
 
-  it('lists only the signed-in customer\'s orders, newest first', async () => {
+  it("lists only the signed-in customer's orders, newest first", async () => {
     const res = await server()
       .get('/api/me/orders')
       .set('Authorization', await as(OWNER));
 
     expect(res.status).toBe(200);
-    expect(res.body.map((o: { orderNumber: string }) => o.orderNumber)).toEqual([
-      'RLY-2026-000003',
-      'RLY-2026-000001',
-    ]);
+    expect(res.body.map((o: { orderNumber: string }) => o.orderNumber)).toEqual(
+      ['RLY-2026-000003', 'RLY-2026-000001'],
+    );
     expect(res.body[0]).toMatchObject({
       id: 3,
       status: 'in_transit',
@@ -119,12 +120,14 @@ describe('Order history (e2e)', () => {
           quantity: 2,
           unitPricePaid: 80,
           lineTotal: 160,
+          delivered: false,
+          review: null,
         },
       ],
     });
   });
 
-  it('does not show another customer\'s orders', async () => {
+  it("does not show another customer's orders", async () => {
     const res = await server()
       .get('/api/me/orders')
       .set('Authorization', await as(OTHER));

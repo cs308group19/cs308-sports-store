@@ -1,3 +1,4 @@
+import type { ReviewStatus } from '../generated/prisma/enums.js';
 import { catalogueId } from '../common/id.js';
 import { type DecimalLike, roundToCents, toNumber } from '../common/money.js';
 import {
@@ -24,6 +25,12 @@ export interface OrderHistoryRecord {
     unitPricePaid: DecimalLike;
     lineTotal: DecimalLike;
     product: { imageUrl: string | null };
+    deliveries: Array<{ id: bigint }>;
+    review: {
+      rating: number;
+      comment: string | null;
+      commentStatus: ReviewStatus;
+    } | null;
   }>;
 }
 
@@ -42,11 +49,21 @@ function toLine(item: OrderHistoryRecord['items'][number]): OrderHistoryLine {
     quantity: item.quantity,
     unitPricePaid: roundToCents(toNumber(item.unitPricePaid)),
     lineTotal: roundToCents(toNumber(item.lineTotal)),
+    delivered: item.deliveries.length > 0,
+    review: item.review
+      ? {
+          rating: item.review.rating,
+          commentStatus:
+            item.review.comment === null ? null : item.review.commentStatus,
+        }
+      : null,
   };
 }
 
 /** Turns one saved order into the entry GET /api/me/orders returns. */
-export function toOrderHistoryItem(record: OrderHistoryRecord): OrderHistoryItem {
+export function toOrderHistoryItem(
+  record: OrderHistoryRecord,
+): OrderHistoryItem {
   if (!isOrderHistoryStatus(record.status)) {
     throw new TypeError(`Unknown order status: ${record.status}`);
   }

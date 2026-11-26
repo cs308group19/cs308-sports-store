@@ -1,8 +1,13 @@
-import { type OrderHistoryRecord, toOrderHistoryItem } from './order-history.mapper.js';
+import {
+  type OrderHistoryRecord,
+  toOrderHistoryItem,
+} from './order-history.mapper.js';
 
 /** SCRUM-27. What the order history page shows for one saved order. */
 describe('toOrderHistoryItem', () => {
-  const record = (overrides: Partial<OrderHistoryRecord> = {}): OrderHistoryRecord => ({
+  const record = (
+    overrides: Partial<OrderHistoryRecord> = {},
+  ): OrderHistoryRecord => ({
     id: 12n,
     orderNumber: 'ORD-2026-000012',
     status: 'in_transit',
@@ -19,6 +24,8 @@ describe('toOrderHistoryItem', () => {
         unitPricePaid: '145.75',
         lineTotal: '291.50',
         product: { imageUrl: null },
+        deliveries: [],
+        review: null,
       },
     ],
     ...overrides,
@@ -42,6 +49,8 @@ describe('toOrderHistoryItem', () => {
           quantity: 2,
           unitPricePaid: 145.75,
           lineTotal: 291.5,
+          delivered: false,
+          review: null,
         },
       ],
     });
@@ -67,6 +76,8 @@ describe('toOrderHistoryItem', () => {
             unitPricePaid: '10',
             lineTotal: '10',
             product: { imageUrl: '/photo.webp' },
+            deliveries: [],
+            review: null,
           },
         ],
       }),
@@ -92,7 +103,9 @@ describe('toOrderHistoryItem', () => {
   });
 
   it('keeps the invoice id so the customer can open that invoice again', () => {
-    expect(toOrderHistoryItem(record({ invoice: { id: 44n } })).invoiceId).toBe(44);
+    expect(toOrderHistoryItem(record({ invoice: { id: 44n } })).invoiceId).toBe(
+      44,
+    );
   });
 
   it('sends large BIGINT ids as strings so no digits are lost', () => {

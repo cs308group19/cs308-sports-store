@@ -29,13 +29,27 @@ describe('OrderHistoryService', () => {
     const query = prisma.order.findMany.mock.calls[0][0];
     expect(query).not.toHaveProperty('include');
     expect(Object.keys(query.select).sort()).toEqual(
-      ['createdAt', 'id', 'invoice', 'items', 'orderNumber', 'status', 'totalAmount'].sort(),
+      [
+        'createdAt',
+        'id',
+        'invoice',
+        'items',
+        'orderNumber',
+        'status',
+        'totalAmount',
+      ].sort(),
     );
     expect(query.select.invoice).toEqual({ select: { id: true } });
     expect(query.select.items.select).toMatchObject({
       id: true,
       productModel: true,
       product: { select: { imageUrl: true } },
+      deliveries: {
+        where: { status: 'delivered' },
+        select: { id: true },
+        take: 1,
+      },
+      review: { select: { rating: true, comment: true, commentStatus: true } },
     });
   });
 
@@ -63,6 +77,8 @@ describe('OrderHistoryService', () => {
             unitPricePaid: '50.00',
             lineTotal: '50.00',
             product: { imageUrl: null },
+            deliveries: [],
+            review: null,
           },
         ],
       },

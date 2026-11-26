@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { OrderHistoryLine } from "./types/orderHistory";
 import type { Role, Product, CartView } from "./types/models";
 import { ApiError } from "./lib/api";
 import { addCartItem, cartErrorMessage, fetchCart, mergeGuestCart, removeCartItem, setCartQuantity } from "./services/cartApi";
@@ -46,6 +47,7 @@ export default function App() {
   const [cart, setCart] = useState<CartView>({ items: [], total: 0 });
   const [cartLoad, setCartLoad] = useState<{ userId: string; status: "ready" | "failed" } | null>(null);
   const [cartRetry, setCartRetry] = useState(0);
+  const [reviewTarget, setReviewTarget] = useState<{ customerId: string; line: OrderHistoryLine } | null>(null);
   const [checkoutInvoice, setCheckoutInvoice] = useState<CheckoutInvoice | null>(null);
   const [catalogueVersion, setCatalogueVersion] = useState(0);
   const [wishlist, setWishlist] = useState<Product[]>([products[0], products[4]]);
@@ -57,6 +59,7 @@ export default function App() {
   useEffect(() => {
     const onPopState = () => {
       setCheckoutInvoice(null);
+      setReviewTarget(null);
       setView(window.location.pathname === "/auth" ? "login" : "home");
     };
     window.addEventListener("popstate", onPopState);
@@ -74,7 +77,7 @@ export default function App() {
   // If the session ends while a staff page, orders or the profile is open (expired or revoked),
   // leave that page.
   useEffect(() => {
-    if (!loading && !user && (staffViews.has(view) || view === "orders" || view === "profile"))
+    if (!loading && !user && (staffViews.has(view) || view === "orders" || view === "profile" || view === "review"))
       setView("home");
   }, [loading, user, view]);
 
@@ -84,6 +87,7 @@ export default function App() {
 
   const navigate = (next: View, invoice: CheckoutInvoice | null = null) => {
     setCheckoutInvoice(invoice);
+    if (next !== "review") setReviewTarget(null);
     // SCRUM-22/27/43. Guests log in before opening checkout, order history or their profile.
     if ((next === "checkout" || next === "orders" || next === "profile") && !user) {
       setAuthOrigin(view);
@@ -289,16 +293,22 @@ export default function App() {
     }
     // Keyed by the account, so signing in as someone else always loads their own orders.
     if (view === "orders")
-      return user ? (
+      return user?.role === "Customer" ? (
         <Orders
           key={user.id}
           onOpenInvoice={(invoiceId) => navigate("invoice", { id: invoiceId, customerId: user.id })}
+          onReview={(line) => {
+            setReviewTarget({ customerId: user.id, line });
+            navigate("review");
+          }}
         />
       ) : null;
     if (view === "wishlist")
       return <Wishlist products={wishlist} openProduct={openProduct} addToCart={addToCart} />;
     if (view === "profile") return user ? <Profile user={user} navigate={navigate} /> : null;
-    if (view === "review") return <ReviewForm notify={notify} navigate={navigate} />;
+    if (view === "review" && user?.role === "Customer" && reviewTarget?.customerId === user.id)
+      return <ReviewForm key={reviewTarget.line.id} line={reviewTarget.line} notify={notify} backToOrders={() => navigate("orders")} />;
+    if (view === "review") return null;
     if (view === "pm-products") return <ProductManagement notify={notify} />;
     if (view === "pm-deliveries") return <Deliveries notify={notify} />;
     if (view === "pm-invoices") return <Invoices notify={notify} manager="product" />;

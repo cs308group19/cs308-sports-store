@@ -167,7 +167,7 @@ export function ProductDetail({
           eyebrow="Athlete feedback"
           title="Ratings & reviews"
           action="Write a review"
-          onAction={() => navigate("review")}
+          onAction={() => navigate("orders")}
         />
         <ReviewList state={state} />
       </section>
