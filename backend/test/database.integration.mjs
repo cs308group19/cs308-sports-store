@@ -1559,7 +1559,7 @@ void test('repeated purchases can receive separate ratings and concurrent writes
     submitReview(buyer, itemIds[1], 5),
   ]);
   assert.deepEqual(
-    results.map((result) => result.status).sort(),
+    results.map((result) => result.status).sort((left, right) => left - right),
     [201, 201, 409],
   );
   const { body: detail } = await server()
