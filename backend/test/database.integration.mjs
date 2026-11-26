@@ -1242,4 +1242,53 @@ void test('the deliveries of a real two-item checkout are listed and the order s
       ['delivered', true, true],
     ],
   );
+  const history = await server()
+    .get('/api/me/orders')
+    .set('Authorization', account.authorization)
+    .expect(200);
+  assert.equal(history.body[0].orderNumber, placed.orderNumber);
+  assert.equal(history.body[0].status, 'delivered');
+});
+
+void test('GET /api/me/orders returns only the customer’s own orders, newest first (SCRUM-27)', async () => {
+  const firstCustomer = await checkoutCustomer();
+  const secondCustomer = await checkoutCustomer();
+  const product = await checkoutProduct('Order history product');
+
+  const empty = await server()
+    .get('/api/me/orders')
+    .set('Authorization', secondCustomer.authorization)
+    .expect(200);
+  assert.deepEqual(empty.body, []);
+
+  await cartAdd(firstCustomer, product, 1);
+  const { body: older } = await checkout(
+    firstCustomer,
+    await reviewedCartFor(firstCustomer),
+  ).expect(201);
+  await waitForInvoiceEmail(older.invoiceId);
+
+  await cartAdd(firstCustomer, product, 2);
+  const { body: newer } = await checkout(
+    firstCustomer,
+    await reviewedCartFor(firstCustomer),
+  ).expect(201);
+  await waitForInvoiceEmail(newer.invoiceId);
+
+  const firstList = await server()
+    .get('/api/me/orders')
+    .set('Authorization', firstCustomer.authorization)
+    .expect(200);
+  assert.deepEqual(
+    firstList.body.map((row) => row.orderNumber),
+    [newer.orderNumber, older.orderNumber],
+  );
+  assert.equal(firstList.body[0].items[0].quantity, 2);
+  assert.equal(firstList.body[0].items[0].model, 'MODEL-Order history product');
+
+  const secondList = await server()
+    .get('/api/me/orders')
+    .set('Authorization', secondCustomer.authorization)
+    .expect(200);
+  assert.deepEqual(secondList.body, []);
 });
