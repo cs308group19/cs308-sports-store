@@ -20,6 +20,7 @@ const connectionString = validateDatabaseTestTarget(
 const db = new Client({ connectionString });
 const migrationDir = new URL('../../supabase/migrations/', import.meta.url);
 const SEARCH_MIGRATION = '20261122160038_product_search_indexes.sql';
+const POPULARITY_MIGRATION = '20261126194500_reset_popularity_to_sales.sql';
 const GUEST = randomUUID();
 
 let app, prisma, privateKey, customer, category;
@@ -674,6 +675,70 @@ void test('checkout commits product and address snapshots, payment, deliveries a
     assert.ok(!output.includes(checkoutInput.cardNumber.replaceAll(' ', '')));
     assert.ok(!output.includes(`"${checkoutInput.cvv}"`));
   }
+});
+
+void test('a real order lowers stock on the product page and moves the product up the popularity order', async () => {
+  const account = await checkoutCustomer();
+  // `idle` is created first, so with equal popularity it comes first (ties are ordered by id).
+  // Only the order can move `bought` ahead of it.
+  const idle = await checkoutProduct('Popularity idle product');
+  const bought = await checkoutProduct('Popularity bought product');
+  const listOrder = async () =>
+    (await server().get('/api/products').expect(200)).body.map((item) => String(item.id));
+
+  const beforeOrder = await listOrder();
+  assert.ok(
+    beforeOrder.indexOf(String(idle)) < beforeOrder.indexOf(String(bought)),
+    'before any order, the older product comes first',
+  );
+
+  await cartAdd(account, bought, 2);
+  const { body: placed } = await checkout(
+    account,
+    await reviewedCartFor(account),
+  ).expect(201);
+  await waitForInvoiceEmail(placed.invoiceId);
+
+  assert.deepEqual(await productStock(bought), { stock_quantity: 8, popularity: 2 });
+  const detail = await server().get(`/api/products/${bought}`).expect(200);
+  assert.equal(detail.body.stock, 8);
+
+  // Sales are the only source of popularity, so the product sold moves ahead of the one not sold.
+  const afterOrder = await listOrder();
+  assert.ok(
+    afterOrder.indexOf(String(bought)) < afterOrder.indexOf(String(idle)),
+    'after the order, the product that was bought comes first',
+  );
+
+  // Re-running the popularity reset migration replaces hand-written seed numbers with real sales.
+  await sql('UPDATE public.products SET popularity = 98 WHERE id = $1', [idle]);
+  const migration = await readFile(
+    new URL(POPULARITY_MIGRATION, migrationDir),
+    'utf8',
+  );
+  await sql(migration);
+  await sql(migration);
+  assert.equal((await productStock(idle)).popularity, 0);
+  assert.equal((await productStock(bought)).popularity, 2);
+});
+
+void test('the last item sold makes the product out of stock on the page and in the list', async () => {
+  const account = await checkoutCustomer();
+  const sold = await checkoutProduct('Sold out product', { stock_quantity: 2 });
+  await cartAdd(account, sold, 2);
+  const { body: placed } = await checkout(
+    account,
+    await reviewedCartFor(account),
+  ).expect(201);
+  await waitForInvoiceEmail(placed.invoiceId);
+
+  assert.equal((await productStock(sold)).stock_quantity, 0);
+  const detail = await server().get(`/api/products/${sold}`).expect(200);
+  assert.equal(detail.body.stock, 0);
+  const list = await server().get('/api/products').expect(200);
+  const item = list.body.find((row) => String(row.id) === String(sold));
+  assert.ok(item, 'an out-of-stock product stays in the list');
+  assert.equal(item.stock, 0);
 });
 
 void test('declined checkout changes no records, product stock or cart items', async () => {
