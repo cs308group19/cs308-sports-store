@@ -11,7 +11,9 @@ export interface ProfileDetails {
 export function initialsOf(name: string, email: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   const letters =
-    parts.length > 1 ? parts[0][0] + parts[parts.length - 1][0] : (parts[0]?.[0] ?? email[0] ?? "?");
+    parts.length > 1
+      ? parts[0][0] + parts[parts.length - 1][0]
+      : (parts[0]?.[0] ?? email.trim()[0] ?? "?");
   return letters.toLocaleUpperCase("tr-TR");
 }
 

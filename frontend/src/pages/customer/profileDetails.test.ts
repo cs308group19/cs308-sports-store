@@ -67,5 +67,7 @@ describe("initialsOf", () => {
 
   it("uses the email when the name is empty", () => {
     expect(initialsOf("  ", "mert@example.com")).toBe("M");
+    expect(initialsOf("  ", "  mert@example.com")).toBe("M");
+    expect(initialsOf("  ", "   ")).toBe("?");
   });
 });
