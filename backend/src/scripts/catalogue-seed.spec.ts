@@ -1,3 +1,5 @@
+import { readdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
 import {
   validateCategoryName,
@@ -43,6 +45,17 @@ describe('demo catalogue data', () => {
   it('includes out-of-stock and discounted products for the demo', () => {
     expect(SEED_PRODUCTS.some((p) => p.stock === 0)).toBe(true);
     expect(SEED_PRODUCTS.some((p) => p.discountRate > 0)).toBe(true);
+  });
+
+  it('has a shop photo for every product, named after its model', () => {
+    const folder = new URL(
+      '../../../frontend/src/assets/catalogue/',
+      import.meta.url,
+    );
+    const photos = new Set(readdirSync(fileURLToPath(folder)));
+    for (const product of SEED_PRODUCTS) {
+      expect(photos.has(`${product.model}.webp`), product.sku).toBe(true);
+    }
   });
 
   it('never sells below cost after the discount', () => {
