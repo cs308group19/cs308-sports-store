@@ -13,6 +13,7 @@ import { type Env, validateEnv } from './config/env.js';
 import { DeliveriesModule } from './deliveries/deliveries.module.js';
 import { HealthController } from './health/health.controller.js';
 import { InvoicesModule } from './invoices/invoices.module.js';
+import { OrderHistoryModule } from './orders/order-history.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { ProductDetailModule } from './products/product-detail.module.js';
 import { StaffController } from './staff/staff.controller.js';
@@ -33,6 +34,7 @@ import { UsersModule } from './users/users.module.js';
     InvoicesModule,
     CheckoutModule,
     DeliveriesModule,
+    OrderHistoryModule,
   ],
   controllers: [HealthController, StaffController],
   providers: [
