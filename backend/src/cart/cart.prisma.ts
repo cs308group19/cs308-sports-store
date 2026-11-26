@@ -6,6 +6,7 @@ import type {
   CartChange,
   CartItem,
   CartStore,
+  MergeChange,
   ProductLookup,
   ProductSnapshot,
 } from './cart.types.js';
@@ -36,41 +37,155 @@ export class PrismaCartStore implements CartStore {
     const owner = cartOwnerWhere(ownerKey);
     return this.prisma.$transaction(
       async (tx) => {
-        // One statement creates the cart on first use or, if it exists, locks its row until the
-        // transaction ends. Another request for this cart waits here and then sees our change.
-        const [cart] =
-          'guestToken' in owner
-            ? await tx.$queryRaw<{ id: bigint }[]>`
-              INSERT INTO public.carts (guest_token) VALUES (${owner.guestToken})
-              ON CONFLICT (guest_token) DO UPDATE SET updated_at = now()
-              RETURNING id`
-            : await tx.$queryRaw<{ id: bigint }[]>`
-              INSERT INTO public.carts (user_id) VALUES (${owner.userId}::uuid)
-              ON CONFLICT (user_id) DO UPDATE SET updated_at = now()
-              RETURNING id`;
-
-        const current = await tx.cartItem.findMany({
-          where: { cartId: cart.id },
-          orderBy: { id: 'asc' },
-          select: { productId: true, quantity: true },
-        });
-        const next = await change(current.map(toCartItem));
-
-        await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
-        if (next.length > 0) {
-          await tx.cartItem.createMany({
-            data: next.map((item) => ({
-              cartId: cart.id,
-              productId: BigInt(item.productId),
-              quantity: item.quantity,
-            })),
-          });
-        }
+        const cartId = await lockCart(tx, owner);
+        const current = await readItems(tx, cartId);
+        const next = await change(current);
+        await replaceItems(tx, cartId, next);
         return next;
       },
-      // The lock wait counts towards the timeout, so leave room for a few queued requests.
-      { maxWait: 10_000, timeout: 15_000 },
+      TRANSACTION_OPTIONS,
     );
+  }
+
+  /**
+   * SCRUM-17. The guest cart is locked first and the customer cart second, in every merge, so two
+   * merges can wait for each other but never deadlock. A second merge of the same guest cart waits
+   * for the first, then finds it empty and copies nothing.
+   *
+   * The frontend calls this on every page load of a signed-in customer, so a missing or empty
+   * guest cart costs one locking SELECT and one read, and inserts or locks nothing else. The stock
+   * of the guest cart's products is read with one query on the same transaction, so the merge never
+   * waits for a second database connection while it holds the cart locks.
+   */
+  async merge(
+    guestKey: string,
+    userKey: string,
+    change: MergeChange,
+  ): Promise<CartItem[]> {
+    const guest = cartOwnerWhere(guestKey);
+    const user = cartOwnerWhere(userKey);
+    return this.prisma.$transaction(async (tx) => {
+      const guestCartId = await lockExistingCart(tx, guest);
+      const guestItems =
+        guestCartId === null ? [] : await readItems(tx, guestCartId);
+      if (guestCartId === null || guestItems.length === 0) {
+        return readOwnerItems(tx, user);
+      }
+
+      const userCartId = await lockCart(tx, user);
+      const userItems = await readItems(tx, userCartId);
+      const stockById = await readStock(tx, guestItems);
+      const next = change(guestItems, userItems, stockById);
+      await replaceItems(tx, userCartId, next);
+      await tx.cartItem.deleteMany({ where: { cartId: guestCartId } });
+      return next;
+    }, TRANSACTION_OPTIONS);
+  }
+}
+
+// The lock wait counts towards the timeout, so leave room for a few queued requests.
+const TRANSACTION_OPTIONS = { maxWait: 10_000, timeout: 15_000 };
+
+type PrismaTransaction = Parameters<
+  Parameters<PrismaService['$transaction']>[0]
+>[0];
+
+/**
+ * Creates the cart on first use or, if it exists, locks its row until the transaction ends. Another
+ * transaction for this cart waits here and then sees everything the first one wrote.
+ */
+async function lockCart(
+  tx: PrismaTransaction,
+  owner: ReturnType<typeof cartOwnerWhere>,
+): Promise<bigint> {
+  const [cart] =
+    'guestToken' in owner
+      ? await tx.$queryRaw<{ id: bigint }[]>`
+        INSERT INTO public.carts (guest_token) VALUES (${owner.guestToken})
+        ON CONFLICT (guest_token) DO UPDATE SET updated_at = now()
+        RETURNING id`
+      : await tx.$queryRaw<{ id: bigint }[]>`
+        INSERT INTO public.carts (user_id) VALUES (${owner.userId}::uuid)
+        ON CONFLICT (user_id) DO UPDATE SET updated_at = now()
+        RETURNING id`;
+  return cart.id;
+}
+
+/** Locks an existing cart row until the transaction ends. Returns null, and inserts nothing, when there is none. */
+async function lockExistingCart(
+  tx: PrismaTransaction,
+  owner: ReturnType<typeof cartOwnerWhere>,
+): Promise<bigint | null> {
+  const rows =
+    'guestToken' in owner
+      ? await tx.$queryRaw<{ id: bigint }[]>`
+        SELECT id FROM public.carts WHERE guest_token = ${owner.guestToken} FOR UPDATE`
+      : await tx.$queryRaw<{ id: bigint }[]>`
+        SELECT id FROM public.carts WHERE user_id = ${owner.userId}::uuid FOR UPDATE`;
+  return rows[0]?.id ?? null;
+}
+
+/** A plain read of a cart, empty when the owner has none. Creates and locks nothing. */
+async function readOwnerItems(
+  tx: PrismaTransaction,
+  owner: ReturnType<typeof cartOwnerWhere>,
+): Promise<CartItem[]> {
+  const cart = await tx.cart.findUnique({
+    where: owner,
+    select: {
+      items: {
+        orderBy: { id: 'asc' },
+        select: { productId: true, quantity: true },
+      },
+    },
+  });
+  return (cart?.items ?? []).map(toCartItem);
+}
+
+/** Stock of the active products among `items`, in one query. Missing or inactive products have no entry. */
+async function readStock(
+  tx: PrismaTransaction,
+  items: CartItem[],
+): Promise<Map<string, number>> {
+  const ids = [...new Set(items.map((item) => item.productId))]
+    .filter(isDatabaseId)
+    .map((id) => BigInt(id));
+  if (ids.length === 0) return new Map();
+  const products = await tx.product.findMany({
+    where: { id: { in: ids }, isActive: true },
+    select: { id: true, stockQuantity: true },
+  });
+  return new Map(
+    products.map((product) => [product.id.toString(), product.stockQuantity]),
+  );
+}
+
+async function readItems(
+  tx: PrismaTransaction,
+  cartId: bigint,
+): Promise<CartItem[]> {
+  const rows = await tx.cartItem.findMany({
+    where: { cartId },
+    orderBy: { id: 'asc' },
+    select: { productId: true, quantity: true },
+  });
+  return rows.map(toCartItem);
+}
+
+async function replaceItems(
+  tx: PrismaTransaction,
+  cartId: bigint,
+  items: CartItem[],
+): Promise<void> {
+  await tx.cartItem.deleteMany({ where: { cartId } });
+  if (items.length > 0) {
+    await tx.cartItem.createMany({
+      data: items.map((item) => ({
+        cartId,
+        productId: BigInt(item.productId),
+        quantity: item.quantity,
+      })),
+    });
   }
 }
 

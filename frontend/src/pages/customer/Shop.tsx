@@ -24,11 +24,13 @@ export function Shop({
   openProduct,
   addToCart,
   initialCategory = "",
+  refreshKey = 0,
 }: {
   openProduct: (p: Product) => void;
   addToCart: (p: Product) => void;
   /** Category slug to open the shop on (from the home page). Empty means all categories. */
   initialCategory?: string;
+  refreshKey?: number;
 }) {
   const [categories, setCategories] = useState<CategorySummary[]>([]);
   const [category, setCategory] = useState(initialCategory);
@@ -64,7 +66,7 @@ export function Shop({
     return () => {
       cancelled = true;
     };
-  }, [reloadKey]);
+  }, [reloadKey, refreshKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -86,7 +88,7 @@ export function Shop({
     return () => {
       cancelled = true;
     };
-  }, [category, search, sort, reloadKey]);
+  }, [category, search, sort, reloadKey, refreshKey]);
 
   const totalCount = categories.reduce((sum, item) => sum + item.productCount, 0);
   const activeName = categories.find((item) => item.slug === category)?.name;

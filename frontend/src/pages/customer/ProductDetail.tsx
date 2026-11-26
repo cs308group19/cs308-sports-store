@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Product, ProductComment } from "../../types/models";
 import { type View } from "../../app/navigation";
 import { Button } from "../../components/ui/Button";
@@ -24,18 +24,24 @@ export function ProductDetail({
   addToCart,
   onWishlist,
   navigate,
+  refreshKey = 0,
 }: {
   product: Product;
   addToCart: (p: Product) => void;
   onWishlist: () => void;
   navigate: (v: View) => void;
+  refreshKey?: number;
 }) {
   const [product, setProduct] = useState<Product>(initial);
   const [state, setState] = useState<LoadState>({ status: "loading" });
+  const prevInitial = useRef(initial);
 
   useEffect(() => {
     let cancelled = false;
-    setProduct(initial);
+    if (prevInitial.current !== initial) {
+      prevInitial.current = initial;
+      setProduct(initial);
+    }
     setState({ status: "loading" });
     fetchProductDetail(initial.id)
       .then((detail) => {
@@ -54,7 +60,7 @@ export function ProductDetail({
     return () => {
       cancelled = true;
     };
-  }, [initial]);
+  }, [initial, refreshKey]);
 
   if (state.status === "not-found") {
     return (
