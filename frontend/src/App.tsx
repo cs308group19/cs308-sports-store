@@ -126,6 +126,7 @@ export default function App() {
 
   const logout = async () => {
     await signOut();
+    setReviewTarget(null);
     setView("home");
     window.history.pushState({}, "", "/");
     notify("You have been logged out");
@@ -312,7 +313,12 @@ export default function App() {
     if (view === "pm-products") return <ProductManagement notify={notify} />;
     if (view === "pm-deliveries") return <Deliveries notify={notify} />;
     if (view === "pm-invoices") return <Invoices notify={notify} manager="product" />;
-    if (view === "pm-reviews") return <ReviewQueue notify={notify} />;
+    if (view === "pm-reviews")
+      return user?.role === "Product Manager" ? (
+        <ReviewQueue key={user.id} notify={notify} />
+      ) : (
+        <p className="page">The review queue is available to product managers.</p>
+      );
     if (view === "sales-pricing") return <Pricing notify={notify} />;
     if (view === "sales-invoices") return <Invoices notify={notify} />;
     if (view === "sales-analytics") return <Analytics />;

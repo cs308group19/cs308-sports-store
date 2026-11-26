@@ -18,7 +18,7 @@ export class ProductDetailService {
       select: {
         ...PRODUCT_SUMMARY_SELECT,
         reviews: {
-          where: { commentStatus: 'approved' },
+          where: { commentStatus: 'approved', comment: { not: null } },
           orderBy: { createdAt: 'desc' },
           take: DETAIL_COMMENT_LIMIT,
           select: {
