@@ -358,6 +358,65 @@ void test('logging in moves the guest cart into the customer cart', async () => 
   assert.equal(owner.user_id, customer.id);
 });
 
+void test('two merges of the same guest cart at the same time copy it once', async () => {
+  const racerGuest = randomUUID();
+  const auth = `Bearer ${await tokenFor(customer.id)}`;
+  await sql(
+    `DELETE FROM public.cart_items WHERE cart_id =
+       (SELECT id FROM public.carts WHERE user_id = $1)`,
+    [customer.id],
+  );
+  await server()
+    .post('/api/cart/items')
+    .set('X-Cart-Token', racerGuest)
+    .send({ productId: String(ids['Road Racer']), quantity: 3 })
+    .expect(201);
+
+  // Both requests see the guest cart at once. The guest row lock makes the second merge wait
+  // for the first, then it finds the guest cart empty and copies nothing.
+  await Promise.all([
+    server()
+      .post('/api/me/cart/merge')
+      .set('Authorization', auth)
+      .set('X-Cart-Token', racerGuest)
+      .expect(200),
+    server()
+      .post('/api/me/cart/merge')
+      .set('Authorization', auth)
+      .set('X-Cart-Token', racerGuest)
+      .expect(200),
+  ]);
+
+  const owned = await server().get('/api/me/cart').set('Authorization', auth).expect(200);
+  assert.deepEqual(
+    owned.body.items.map((i) => [i.name, i.quantity]),
+    [['Road Racer', 3]],
+  );
+  const guest = await server().get('/api/cart').set('X-Cart-Token', racerGuest);
+  assert.deepEqual(guest.body, { items: [], total: 0 });
+});
+
+void test('a merge without a guest cart inserts no cart row', async () => {
+  // The frontend merges on every page load of a signed-in customer, usually with no guest cart.
+  const auth = `Bearer ${await tokenFor(customer.id)}`;
+  const unknownGuest = randomUUID();
+  const before = await one('SELECT count(*)::int AS carts FROM public.carts');
+
+  await server()
+    .post('/api/me/cart/merge')
+    .set('Authorization', auth)
+    .set('X-Cart-Token', unknownGuest)
+    .expect(200);
+
+  const after = await one('SELECT count(*)::int AS carts FROM public.carts');
+  assert.equal(after.carts, before.carts);
+  const guest = await one(
+    'SELECT count(*)::int AS carts FROM public.carts WHERE guest_token = $1',
+    [unknownGuest],
+  );
+  assert.equal(guest.carts, 0);
+});
+
 void test('constraints reject impossible products and cart rows', async () => {
   const product = ids['Road Racer'];
   for (const change of [
@@ -1228,4 +1287,53 @@ void test('the deliveries of a real two-item checkout are listed and the order s
       ['delivered', true, true],
     ],
   );
+  const history = await server()
+    .get('/api/me/orders')
+    .set('Authorization', account.authorization)
+    .expect(200);
+  assert.equal(history.body[0].orderNumber, placed.orderNumber);
+  assert.equal(history.body[0].status, 'delivered');
+});
+
+void test('GET /api/me/orders returns only the customer’s own orders, newest first (SCRUM-27)', async () => {
+  const firstCustomer = await checkoutCustomer();
+  const secondCustomer = await checkoutCustomer();
+  const product = await checkoutProduct('Order history product');
+
+  const empty = await server()
+    .get('/api/me/orders')
+    .set('Authorization', secondCustomer.authorization)
+    .expect(200);
+  assert.deepEqual(empty.body, []);
+
+  await cartAdd(firstCustomer, product, 1);
+  const { body: older } = await checkout(
+    firstCustomer,
+    await reviewedCartFor(firstCustomer),
+  ).expect(201);
+  await waitForInvoiceEmail(older.invoiceId);
+
+  await cartAdd(firstCustomer, product, 2);
+  const { body: newer } = await checkout(
+    firstCustomer,
+    await reviewedCartFor(firstCustomer),
+  ).expect(201);
+  await waitForInvoiceEmail(newer.invoiceId);
+
+  const firstList = await server()
+    .get('/api/me/orders')
+    .set('Authorization', firstCustomer.authorization)
+    .expect(200);
+  assert.deepEqual(
+    firstList.body.map((row) => row.orderNumber),
+    [newer.orderNumber, older.orderNumber],
+  );
+  assert.equal(firstList.body[0].items[0].quantity, 2);
+  assert.equal(firstList.body[0].items[0].model, 'MODEL-Order history product');
+
+  const secondList = await server()
+    .get('/api/me/orders')
+    .set('Authorization', secondCustomer.authorization)
+    .expect(200);
+  assert.deepEqual(secondList.body, []);
 });

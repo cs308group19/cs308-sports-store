@@ -69,9 +69,11 @@ export default function App() {
     if (user && user.role !== "Customer") setView(roleDefaults[user.role]);
   }, [loading, user]);
 
-  // If the session ends while a staff page is open (expired or revoked), leave that page.
+  // If the session ends while a staff page, orders or the profile is open (expired or revoked),
+  // leave that page.
   useEffect(() => {
-    if (!loading && !user && staffViews.has(view)) setView("home");
+    if (!loading && !user && (staffViews.has(view) || view === "orders" || view === "profile"))
+      setView("home");
   }, [loading, user, view]);
 
   useEffect(() => {
@@ -80,9 +82,10 @@ export default function App() {
 
   const navigate = (next: View, invoice: CheckoutInvoice | null = null) => {
     setCheckoutInvoice(invoice);
-    if (next === "checkout" && !user) {
+    // SCRUM-22/27/43. Guests log in before opening checkout, order history or their profile.
+    if ((next === "checkout" || next === "orders" || next === "profile") && !user) {
       setAuthOrigin(view);
-      setReturnTo("checkout");
+      setReturnTo(next);
       setView("login");
       window.history.pushState({}, "", "/auth");
       setMobileOpen(false);
@@ -270,10 +273,11 @@ export default function App() {
         : null;
       return <Invoice key={invoiceId ?? "missing"} invoiceId={invoiceId} notify={notify} navigate={navigate} />;
     }
-    if (view === "orders") return <Orders notify={notify} navigate={navigate} />;
+    // Keyed by the account, so signing in as someone else always loads their own orders.
+    if (view === "orders") return user ? <Orders key={user.id} /> : null;
     if (view === "wishlist")
       return <Wishlist products={wishlist} openProduct={openProduct} addToCart={addToCart} />;
-    if (view === "profile") return <Profile notify={notify} />;
+    if (view === "profile") return user ? <Profile user={user} navigate={navigate} /> : null;
     if (view === "review") return <ReviewForm notify={notify} navigate={navigate} />;
     if (view === "pm-products") return <ProductManagement notify={notify} />;
     if (view === "pm-deliveries") return <Deliveries notify={notify} />;

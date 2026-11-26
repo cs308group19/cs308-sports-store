@@ -111,6 +111,52 @@ describe('Authentication and role protection (e2e)', () => {
     });
   });
 
+  it('returns each customer only their own profile details (SCRUM-65)', async () => {
+    profiles.set(
+      'customer-1',
+      makeProfile({
+        id: 'customer-1',
+        fullName: 'Ayşe Yılmaz',
+        email: 'ayse@example.com',
+        homeAddress: 'Orta Mah. 12, Tuzla, Istanbul',
+        taxIdEncrypted: null,
+      }),
+    );
+    profiles.set(
+      'customer-2',
+      makeProfile({
+        id: 'customer-2',
+        fullName: 'Mert Kaya',
+        email: 'mert@example.com',
+        homeAddress: 'Moda, Kadıköy, Istanbul',
+        taxIdEncrypted: null,
+      }),
+    );
+
+    const first = await request(app.getHttpServer())
+      .get('/api/auth/me')
+      .set('Authorization', await bearer('customer-1'))
+      .expect(200);
+    const second = await request(app.getHttpServer())
+      .get('/api/auth/me')
+      .set('Authorization', await bearer('customer-2'))
+      .expect(200);
+
+    expect(first.body).toMatchObject({
+      id: 'customer-1',
+      fullName: 'Ayşe Yılmaz',
+      email: 'ayse@example.com',
+      homeAddress: 'Orta Mah. 12, Tuzla, Istanbul',
+    });
+    expect(second.body).toMatchObject({
+      id: 'customer-2',
+      fullName: 'Mert Kaya',
+      email: 'mert@example.com',
+      homeAddress: 'Moda, Kadıköy, Istanbul',
+    });
+    expect(first.body.email).not.toBe(second.body.email);
+  });
+
   it('rejects a valid token whose user has no profile', async () => {
     await request(app.getHttpServer())
       .get('/api/auth/me')

@@ -1520,6 +1520,21 @@ label textarea {
 .profile-form .btn {
   align-self: flex-start;
 }
+.profile-details {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+}
+.profile-details dt {
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+.profile-details dd {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
 .form-page {
   background: var(--soft);
   max-width: none;
