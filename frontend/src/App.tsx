@@ -270,7 +270,7 @@ export default function App() {
         : null;
       return <Invoice key={invoiceId ?? "missing"} invoiceId={invoiceId} notify={notify} navigate={navigate} />;
     }
-    if (view === "orders") return <Orders notify={notify} navigate={navigate} />;
+    if (view === "orders") return <Orders />;
     if (view === "wishlist")
       return <Wishlist products={wishlist} openProduct={openProduct} addToCart={addToCart} />;
     if (view === "profile") return <Profile notify={notify} />;
