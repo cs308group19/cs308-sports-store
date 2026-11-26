@@ -58,8 +58,8 @@ export function Header({
               </button>
               <button
                 className="icon-btn"
-                aria-label={user ? "Profile" : "Log in"}
-                onClick={() => navigate(user ? "profile" : "login")}
+                aria-label="Profile"
+                onClick={() => navigate("profile")}
               >
                 <Icon name="user" />
               </button>
