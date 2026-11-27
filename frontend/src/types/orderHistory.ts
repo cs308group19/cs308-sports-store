@@ -16,7 +16,11 @@ export interface OrderHistoryLine {
   unitPricePaid: number;
   lineTotal: number;
   delivered: boolean;
-  review: { rating: number; commentStatus: CommentStatus | null } | null;
+  review: {
+    rating: number;
+    hasComment?: boolean;
+    commentStatus: CommentStatus | null;
+  } | null;
 }
 
 export interface OrderHistoryItem {

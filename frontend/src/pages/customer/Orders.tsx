@@ -99,7 +99,7 @@ export function Orders({ onOpenInvoice, onReview }: {
                         </small>
                       )}
                     </span>
-                    {line.delivered && !line.review?.commentStatus && (
+                    {line.delivered && !(line.review?.hasComment ?? Boolean(line.review?.commentStatus)) && (
                       <Button type="button" variant="outline" onClick={() => onReview(line)}>
                         {line.review ? "Add a comment" : "Write a review"}
                       </Button>

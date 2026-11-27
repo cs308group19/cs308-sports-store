@@ -25,6 +25,7 @@ export interface OrderHistoryLine {
   delivered: boolean;
   review: {
     rating: number;
+    hasComment: boolean;
     commentStatus: Exclude<ReviewStatus, 'not_applicable'> | null;
   } | null;
 }

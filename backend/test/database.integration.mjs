@@ -1511,6 +1511,30 @@ void test('reviews use the purchased line and its delivery; ratings publish befo
   assert.equal(initialDetail.reviews, 1);
   assert.deepEqual(initialDetail.comments, []);
   await submitReview(buyer, orderItemId, 4).expect(409);
+  const historyReview = async () =>
+    (await orderHistory(buyer))[0].items.find(
+      (line) => String(line.id) === orderItemId,
+    ).review;
+  assert.deepEqual(await historyReview(), {
+    rating: 4,
+    hasComment: false,
+    commentStatus: null,
+  });
+
+  // An imported comment can have no display status while still occupying the one comment slot.
+  await sql('UPDATE public.reviews SET comment = $1 WHERE id = $2', [
+    'Legacy text',
+    rating.id,
+  ]);
+  assert.deepEqual(await historyReview(), {
+    rating: 4,
+    hasComment: true,
+    commentStatus: null,
+  });
+  await submitReview(buyer, orderItemId, 4, 'Second text.').expect(409);
+  await sql('UPDATE public.reviews SET comment = NULL WHERE id = $1', [
+    rating.id,
+  ]);
 
   const { body: comment } = await submitReview(
     buyer,
@@ -1521,12 +1545,11 @@ void test('reviews use the purchased line and its delivery; ratings publish befo
   assert.equal(comment.id, rating.id);
   assert.equal(comment.commentStatus, 'pending');
   assert.deepEqual((await detail()).comments, []);
-  assert.deepEqual(
-    (await orderHistory(buyer))[0].items.find(
-      (line) => String(line.id) === orderItemId,
-    ).review,
-    { rating: 4, commentStatus: 'pending' },
-  );
+  assert.deepEqual(await historyReview(), {
+    rating: 4,
+    hasComment: true,
+    commentStatus: 'pending',
+  });
 
   await server().get('/api/staff/reviews?status=pending').expect(401);
   await server()

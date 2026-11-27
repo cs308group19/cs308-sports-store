@@ -17,7 +17,7 @@ export function ReviewForm({
   const [comment, setComment] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const hasComment = Boolean(line.review?.commentStatus);
+  const hasComment = line.review?.hasComment ?? Boolean(line.review?.commentStatus);
 
   return (
     <div className="page form-page">

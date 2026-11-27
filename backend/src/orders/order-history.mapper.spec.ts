@@ -124,7 +124,11 @@ describe('toOrderHistoryItem', () => {
         ],
       }),
     );
-    expect(item.items[0].review).toEqual({ rating: 4, commentStatus: null });
+    expect(item.items[0].review).toEqual({
+      rating: 4,
+      hasComment: true,
+      commentStatus: null,
+    });
   });
 
   it('sends large BIGINT ids as strings so no digits are lost', () => {
