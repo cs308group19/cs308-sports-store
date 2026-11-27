@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { DashboardShell } from "../../components/layout/DashboardShell";
 import { Button } from "../../components/ui/Button";
+import { Skeleton } from "../../components/ui/Skeleton";
 import {
   type Delivery,
   deliveryErrorMessage,
@@ -121,11 +122,29 @@ export function Deliveries({ notify }: { notify: (s: string) => void }) {
           </div>
           <div className="table-wrap" aria-busy={state.status === "loading"}>
             {state.status === "loading" ? (
-              <div className="empty">Loading deliveries...</div>
+              <div className="table-skeleton">
+                <span className="sr-only" role="status">
+                  Loading deliveries
+                </span>
+                {[0, 1, 2, 3].map((row) => (
+                  <Skeleton key={row} style={{ height: 40 }} />
+                ))}
+              </div>
             ) : visible.length === 0 ? (
               <div className="empty">
                 <h2>{rows.length === 0 ? "No deliveries yet" : "No deliveries in this view"}</h2>
-                {rows.length === 0 && <p>Deliveries appear here after customers place orders.</p>}
+                {rows.length === 0 ? (
+                  <>
+                    <p>Deliveries appear here after customers place orders.</p>
+                    <Button variant="outline" onClick={() => void load()}>
+                      Refresh
+                    </Button>
+                  </>
+                ) : (
+                  <Button variant="outline" onClick={() => setFilter("all")}>
+                    Show all deliveries
+                  </Button>
+                )}
               </div>
             ) : (
               <table>

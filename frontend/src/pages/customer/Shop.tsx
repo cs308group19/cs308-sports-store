@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import type { Product } from "../../types/models";
 import { Button } from "../../components/ui/Button";
+import { EmptyState } from "../../components/ui/EmptyState";
+import { Skeleton, SkeletonCards } from "../../components/ui/Skeleton";
 import { Icon } from "../../components/ui/Icon";
 import { ProductCard } from "../../components/ui/ProductCard";
 import {
@@ -24,12 +26,15 @@ export function Shop({
   openProduct,
   addToCart,
   initialCategory = "",
+  initialSearch = "",
   refreshKey = 0,
 }: {
   openProduct: (p: Product) => void;
   addToCart: (p: Product) => void;
   /** Category slug to open the shop on (from the home page). Empty means all categories. */
   initialCategory?: string;
+  /** Words already in the search box, for example a brand picked on the home page. */
+  initialSearch?: string;
   refreshKey?: number;
 }) {
   const [categories, setCategories] = useState<CategorySummary[]>([]);
@@ -37,11 +42,15 @@ export function Shop({
   const [products, setProducts] = useState<Product[]>([]);
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [reloadKey, setReloadKey] = useState(0);
-  const [query, setQuery] = useState("");
-  const [search, setSearch] = useState("");
+  const [query, setQuery] = useState(initialSearch);
+  const [search, setSearch] = useState(initialSearch);
   const [sort, setSort] = useState<ProductSort>("popularity");
 
   useEffect(() => setCategory(initialCategory), [initialCategory]);
+  useEffect(() => {
+    setQuery(initialSearch);
+    setSearch(initialSearch);
+  }, [initialSearch]);
 
   // Search once the customer stops typing. Clearing the box shows every product right away.
   useEffect(() => {
@@ -150,19 +159,29 @@ export function Shop({
           ) : (
             <>
               <div className="result-count">
-                {state.status === "loading" ? "Loading products..." : `${products.length} products`}
+                {state.status === "loading" ? (
+                  <Skeleton style={{ width: 90 }} />
+                ) : (
+                  `${products.length} product${products.length === 1 ? "" : "s"}`
+                )}
               </div>
               {state.status === "ready" && products.length === 0 && (
-                <div className="empty">
-                  <h2>No products found</h2>
-                  <p>
-                    {search
-                      ? "Try a different search."
-                      : "There are no products in this category yet."}
-                  </p>
-                </div>
+                <EmptyState
+                  icon="search"
+                  title="No products found"
+                  text={search ? "Try a different search." : "There are no products in this category yet."}
+                  action="Show all products"
+                  onAction={() => {
+                    setQuery("");
+                    setSearch("");
+                    setCategory("");
+                  }}
+                />
               )}
               <div className="product-grid three">
+                {state.status === "loading" && products.length === 0 && (
+                  <SkeletonCards count={6} label="Loading products" />
+                )}
                 {products.map((product) => (
                   <ProductCard
                     key={product.id}

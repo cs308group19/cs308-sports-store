@@ -4,9 +4,14 @@ import { type View } from "../../app/navigation";
 import { Button } from "../../components/ui/Button";
 import { Icon } from "../../components/ui/Icon";
 import { SectionHead } from "../../components/ui/SectionHead";
+import { Skeleton } from "../../components/ui/Skeleton";
+import { ImageZoom } from "../../components/ui/ImageZoom";
 import { Stars } from "../../components/ui/Stars";
+import { TiltCard } from "../../components/ui/TiltCard";
 import { ApiError } from "../../lib/api";
 import { fetchProductDetail } from "../../services/productApi";
+import { brandOf } from "../../utils/brands";
+import { flyToCart } from "../../utils/flyToCart";
 import { money } from "../../utils/format";
 
 type LoadState =
@@ -24,17 +29,23 @@ export function ProductDetail({
   addToCart,
   onWishlist,
   navigate,
+  openCategory,
+  openBrand,
   refreshKey = 0,
 }: {
   product: Product;
   addToCart: (p: Product) => void;
-  onWishlist: () => void;
+  onWishlist: (p: Product) => void;
   navigate: (v: View) => void;
+  openCategory: (slug: string) => void;
+  openBrand: (brand: string) => void;
   refreshKey?: number;
 }) {
   const [product, setProduct] = useState<Product>(initial);
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const prevInitial = useRef(initial);
+  const [zoomed, setZoomed] = useState(false);
+  const photo = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -77,29 +88,119 @@ export function ProductDetail({
     );
   }
 
+  // A product opened from a cart or order line has only its name until the details arrive.
+  if (!product.category) {
+    return (
+      <div className="page" aria-busy={state.status === "loading"}>
+        {state.status === "loading" ? (
+          <div className="product-detail">
+            <span className="sr-only" role="status">
+              Loading product
+            </span>
+            <Skeleton className="detail-skeleton" />
+            <div className="detail-copy">
+              <Skeleton style={{ height: 16, width: "30%" }} />
+              <Skeleton style={{ height: 52, width: "90%" }} />
+              <Skeleton style={{ height: 44, width: "40%" }} />
+              <Skeleton style={{ height: 130 }} />
+            </div>
+          </div>
+        ) : (
+          <div className="empty">
+            <h2>This product could not be loaded</h2>
+            <p>Please check your connection and open it again.</p>
+            <Button onClick={() => navigate("shop")}>Browse the shop</Button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   const inStock = product.stock > 0;
+  const brand = brandOf(product.name);
+  const saving = product.oldPrice ? Math.round((1 - product.price / product.oldPrice) * 100) : 0;
 
   return (
     <div className="page">
-      <button className="back-link" onClick={() => navigate("shop")}>
-        ← Back to shop
-      </button>
+      <nav className="breadcrumb" aria-label="Breadcrumb">
+        <button onClick={() => navigate("shop")}>Shop</button>
+        <span aria-hidden="true">/</span>
+        <button onClick={() => openCategory(product.categorySlug ?? product.category.toLowerCase())}>{product.category}</button>
+        {brand && (
+          <>
+            <span aria-hidden="true">/</span>
+            <button onClick={() => openBrand(brand)}>{brand}</button>
+          </>
+        )}
+      </nav>
       <div className="product-detail" aria-busy={state.status === "loading"}>
-        <div className="detail-image">
-          <img src={product.image} alt={product.name} />
-          {product.oldPrice && <span className="discount">SALE</span>}
-        </div>
+        <TiltCard max={10} className="detail-tilt">
+          <button
+            ref={photo}
+            className="detail-image"
+            aria-label="Zoom product photo"
+            aria-haspopup="dialog"
+            onClick={() => setZoomed(true)}
+          >
+            <img src={product.image} alt={product.name} width="800" height="800" />
+            {product.oldPrice && <span className="discount">SALE</span>}
+            <span className="zoom-hint" aria-hidden="true">
+              <Icon name="zoom" size={16} /> Click to zoom
+            </span>
+          </button>
+        </TiltCard>
+        {zoomed && (
+          <ImageZoom
+            src={product.image}
+            alt={product.name}
+            onClose={() => {
+              setZoomed(false);
+              photo.current?.focus();
+            }}
+          />
+        )}
         <div className="detail-copy">
-          <span className="eyebrow">{product.category}</span>
+          <span className="detail-label">{brand ? `${brand} · ${product.category}` : product.category}</span>
           <h1>{product.name}</h1>
-          <Stars rating={product.rating} />
-          <span className="review-count">
-            {product.reviews} rating{product.reviews === 1 ? "" : "s"}
-          </span>
+          <div className="detail-rating">
+            <Stars rating={product.rating} />
+            <span className="review-count">
+              {product.reviews} rating{product.reviews === 1 ? "" : "s"}
+            </span>
+          </div>
           <div className="detail-price">
-            {money(product.price)} {product.oldPrice && <s>{money(product.oldPrice)}</s>}
+            <b>{money(product.price)}</b>
+            {product.oldPrice && (
+              <>
+                <s>{money(product.oldPrice)}</s>
+                <span className="saving">Save {saving}%</span>
+              </>
+            )}
           </div>
           <p>{product.description}</p>
+          <div className={`stock-callout ${inStock ? "" : "none"}`}>
+            <span></span>
+            {inStock ? `${product.stock} in stock · ready to ship` : "Currently out of stock"}
+          </div>
+          {state.status === "offline" && (
+            <small className="return-status">
+              Live stock could not be loaded. Showing the last known details.
+            </small>
+          )}
+          <div className="detail-actions">
+            <Button
+              disabled={!inStock}
+              onClick={() => {
+                addToCart(product);
+                flyToCart(photo.current?.querySelector("img"));
+              }}
+            >
+              {inStock ? "Add to cart" : "Out of stock"} <Icon name="bag" size={18} />
+            </Button>
+            <Button variant="outline" aria-label="Add to wishlist" onClick={() => onWishlist(product)}>
+              <Icon name="heart" />
+            </Button>
+          </div>
           <dl>
             <div>
               <dt>Product ID</dt>
@@ -136,23 +237,6 @@ export function ProductDetail({
               <dd>{money(product.price)}</dd>
             </div>
           </dl>
-          <div className={`stock-callout ${inStock ? "" : "none"}`}>
-            <span></span>
-            {inStock ? `${product.stock} units ready to ship` : "Currently out of stock"}
-          </div>
-          {state.status === "offline" && (
-            <small className="return-status">
-              Live stock could not be loaded. Showing the last known details.
-            </small>
-          )}
-          <div className="detail-actions">
-            <Button disabled={!inStock} onClick={() => addToCart(product)}>
-              {inStock ? "Add to cart" : "Out of stock"} <Icon name="bag" size={18} />
-            </Button>
-            <Button variant="outline" aria-label="Add to wishlist" onClick={onWishlist}>
-              <Icon name="heart" />
-            </Button>
-          </div>
           <div className="delivery-note">
             <Icon name="truck" />
             <span>
@@ -176,7 +260,16 @@ export function ProductDetail({
 }
 
 function ReviewList({ state }: { state: LoadState }) {
-  if (state.status === "loading") return <p className="empty">Loading reviews…</p>;
+  if (state.status === "loading")
+    return (
+      <div className="review-cards">
+        <span className="sr-only" role="status">
+          Loading reviews
+        </span>
+        <Skeleton className="review-skeleton" />
+        <Skeleton className="review-skeleton" />
+      </div>
+    );
   if (state.status !== "ready") return <p className="empty">Reviews could not be loaded.</p>;
   if (state.comments.length === 0)
     return <p className="empty">No approved comments yet. Customers can review after delivery.</p>;

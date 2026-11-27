@@ -7,6 +7,7 @@ import { cartOwnerWhere } from './cart.owner.js';
 export interface CartLineResponse {
   productId: string;
   name: string;
+  model: string;
   /** The price the customer pays: the list price after the product's discount. */
   price: number;
   imageUrl: string | null;
@@ -46,6 +47,7 @@ export class CartViewService {
               select: {
                 id: true,
                 name: true,
+                model: true,
                 price: true,
                 discountRate: true,
                 imageUrl: true,
@@ -69,6 +71,7 @@ export class CartViewService {
         return {
           productId: product.id.toString(),
           name: product.name,
+          model: product.model,
           price,
           imageUrl: product.imageUrl,
           stock: product.stockQuantity,

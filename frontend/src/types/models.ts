@@ -7,6 +7,7 @@ export interface Product {
   id: number | string;
   name: string;
   category: Category;
+  categorySlug?: string;
   price: number;
   oldPrice?: number;
   rating: number;
@@ -52,6 +53,7 @@ export interface Order {
 export interface CartViewItem {
   productId: string;
   name: string;
+  model?: string | null;
   price: number;
   imageUrl: string | null;
   stock: number;

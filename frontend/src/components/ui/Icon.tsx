@@ -61,6 +61,12 @@ export function Icon({ name, size = 20 }: { name: string; size?: number }) {
       </>
     ),
     check: <path d="m5 12 4 4L19 6" />,
+    zoom: (
+      <>
+        <circle cx="11" cy="11" r="7" />
+        <path d="m20 20-3.5-3.5M11 8v6M8 11h6" />
+      </>
+    ),
     eye: (
       <>
         <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6S2.5 12 2.5 12Z" />
