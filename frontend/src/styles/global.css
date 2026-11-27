@@ -4389,6 +4389,20 @@ footer {
   }
 }
 
+/* ---------- Fly to the cart ---------- */
+.flyer {
+  position: fixed;
+  z-index: 90;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 12px 30px rgba(7, 26, 51, 0.35);
+  object-fit: contain;
+  pointer-events: none;
+}
+.cart-button.is-pop .cart-count {
+  animation: pop 0.45s ease-out;
+}
+
 /* Print: the invoice alone on a clean page. */
 @media print {
   .header,

@@ -11,6 +11,7 @@ import { TiltCard } from "../../components/ui/TiltCard";
 import { ApiError } from "../../lib/api";
 import { fetchProductDetail } from "../../services/productApi";
 import { brandOf } from "../../utils/brands";
+import { flyToCart } from "../../utils/flyToCart";
 import { money } from "../../utils/format";
 
 type LoadState =
@@ -187,7 +188,13 @@ export function ProductDetail({
             </small>
           )}
           <div className="detail-actions">
-            <Button disabled={!inStock} onClick={() => addToCart(product)}>
+            <Button
+              disabled={!inStock}
+              onClick={() => {
+                addToCart(product);
+                flyToCart(photo.current?.querySelector("img"));
+              }}
+            >
               {inStock ? "Add to cart" : "Out of stock"} <Icon name="bag" size={18} />
             </Button>
             <Button variant="outline" aria-label="Add to wishlist" onClick={onWishlist}>

@@ -2,6 +2,7 @@ import type { Product } from "../../types/models";
 import { Stars } from "./Stars";
 import { TiltCard } from "./TiltCard";
 import { brandOf } from "../../utils/brands";
+import { flyToCart } from "../../utils/flyToCart";
 import { shortMoney } from "../../utils/format";
 
 export function ProductCard({
@@ -47,7 +48,10 @@ export function ProductCard({
               className="add-button"
               aria-label={product.stock ? `Add ${product.name} to cart` : `${product.name} is out of stock`}
               disabled={!product.stock}
-              onClick={() => addToCart(product)}
+              onClick={(event) => {
+                addToCart(product);
+                flyToCart(event.currentTarget.closest(".product-card")?.querySelector("img"));
+              }}
             >
               +
             </button>
