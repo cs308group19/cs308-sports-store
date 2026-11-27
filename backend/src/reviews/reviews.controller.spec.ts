@@ -4,6 +4,7 @@ import type { AuthUser } from '../auth/auth.types.js';
 import { ROLES_KEY } from '../auth/decorators.js';
 import { UserRole } from '../auth/roles.js';
 import { ReviewsController } from './reviews.controller.js';
+import type { SubmitReviewDto } from './reviews.dto.js';
 import type { ReviewsService } from './reviews.service.js';
 import { StaffReviewsController } from './staff-reviews.controller.js';
 
@@ -47,11 +48,16 @@ describe('who may use the review routes', () => {
 
 describe('ReviewsController.submit', () => {
   it('reviews as the signed-in customer, never as an id from the body', async () => {
-    await customerRoutes.submit(customer, {
+    const spoofedBody = {
       orderItemId: '41',
       rating: 5,
       comment: 'Fits well',
-    });
+      userId: 'other-customer',
+    } as SubmitReviewDto;
+
+    await expect(customerRoutes.submit(customer, spoofedBody)).resolves.toEqual(
+      { id: 31, rating: 4, commentStatus: null },
+    );
 
     expect(reviews.submit).toHaveBeenCalledWith(
       'customer-1',
@@ -114,13 +120,15 @@ describe('StaffReviewsController.list', () => {
     },
   );
 
-  it.each(['approved', 'rejected', '', ['pending']])(
-    'refuses the status filter %o',
-    (status) => {
-      expect(() => staffRoutes.list(status)).toThrow(BadRequestException);
-      expect(reviews.listPending).not.toHaveBeenCalled();
-    },
-  );
+  it.each<[string, unknown]>([
+    ['approved', 'approved'],
+    ['rejected', 'rejected'],
+    ['an empty string', ''],
+    ['a repeated status parameter', ['pending']],
+  ])('refuses %s as the status filter', (_case, status) => {
+    expect(() => staffRoutes.list(status)).toThrow(BadRequestException);
+    expect(reviews.listPending).not.toHaveBeenCalled();
+  });
 });
 
 describe('StaffReviewsController.moderate', () => {
@@ -130,7 +138,7 @@ describe('StaffReviewsController.moderate', () => {
     expect(reviews.moderate).toHaveBeenCalledWith(31n, 'manager-1', 'rejected');
   });
 
-  it.each(['0', '-1', 'abc', '3.5'])(
+  it.each(['0', '-1', 'abc', '3.5', '9223372036854775808'])(
     'refuses the review id %s before moderating',
     (id) => {
       expect(() =>

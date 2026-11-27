@@ -70,6 +70,10 @@ describe('SubmitReviewDto order item', () => {
   it('refuses a review without an order item', () => {
     expect(failures({ rating: 4 })).toEqual(['orderItemId']);
   });
+
+  it('refuses a null order item', () => {
+    expect(failures({ orderItemId: null, rating: 4 })).toEqual(['orderItemId']);
+  });
 });
 
 describe('ModerateReviewDto', () => {
@@ -88,4 +92,31 @@ describe('ModerateReviewDto', () => {
       expect(errors.map((error) => error.property)).toEqual(['status']);
     },
   );
+});
+
+describe('review bodies through the global ValidationPipe options', () => {
+  const strict = <T extends object>(cls: new () => T, body: object) =>
+    validateSync(plainToInstance(cls, body), {
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    }).map((error) => error.property);
+
+  it('rejects unexpected fields on SubmitReviewDto such as userId or commentStatus', () => {
+    expect(
+      strict(SubmitReviewDto, {
+        ...valid,
+        userId: 'other-customer',
+        commentStatus: 'approved',
+      }),
+    ).toEqual(['userId', 'commentStatus']);
+  });
+
+  it('rejects unexpected fields on ModerateReviewDto such as moderatedBy', () => {
+    expect(
+      strict(ModerateReviewDto, {
+        status: 'approved',
+        moderatedBy: 'other-manager',
+      }),
+    ).toEqual(['moderatedBy']);
+  });
 });
