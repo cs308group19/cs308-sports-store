@@ -74,11 +74,10 @@ export function DropRing({
   };
 
   return (
-    <section id="drop" className={`drop ${still ? "drop--static" : ""}`} ref={track}>
+    <section id="drop" tabIndex={-1} className={`drop ${still ? "drop--static" : ""}`} ref={track}>
       <div className="drop-stage">
         <div className="drop-inner">
           <div className="drop-copy" ref={reveal}>
-            <span className="mono-label">01 — THE DROP</span>
             <h2>
               New this week.
               <br />

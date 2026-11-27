@@ -27,6 +27,7 @@ type LoadState =
 export function ProductDetail({
   product: initial,
   addToCart,
+  inWishlist = false,
   onWishlist,
   navigate,
   openCategory,
@@ -35,6 +36,7 @@ export function ProductDetail({
 }: {
   product: Product;
   addToCart: (p: Product) => void;
+  inWishlist?: boolean;
   onWishlist: (p: Product) => void;
   navigate: (v: View) => void;
   openCategory: (slug: string) => void;
@@ -197,8 +199,14 @@ export function ProductDetail({
             >
               {inStock ? "Add to cart" : "Out of stock"} <Icon name="bag" size={18} />
             </Button>
-            <Button variant="outline" aria-label="Add to wishlist" onClick={() => onWishlist(product)}>
-              <Icon name="heart" />
+            <Button
+              variant="outline"
+              className="wishlist-button"
+              aria-label="Save to wishlist"
+              aria-pressed={inWishlist}
+              onClick={() => onWishlist(product)}
+            >
+              <Icon name="heart" filled={inWishlist} />
             </Button>
           </div>
           <dl>

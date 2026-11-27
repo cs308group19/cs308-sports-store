@@ -24,7 +24,9 @@ import { Profile } from "./pages/customer/Profile";
 import { ReviewForm } from "./pages/customer/ReviewForm";
 import { Shop } from "./pages/customer/Shop";
 import { Wishlist } from "./pages/customer/Wishlist";
+import { useHomeSectionSpy } from "./hooks/useHomeSectionSpy";
 import { scrollToSection } from "./utils/scrollToSection";
+import { isInWishlist, toggleWishlistItem } from "./utils/wishlist";
 import { Deliveries } from "./pages/product-manager/Deliveries";
 import { ProductManagement } from "./pages/product-manager/ProductManagement";
 import { ReviewQueue } from "./pages/product-manager/ReviewQueue";
@@ -61,6 +63,7 @@ export default function App() {
   const [mobileOpen, setMobileOpen] = useState(false);
   /** A home page section waiting to be scrolled to once the home page has its products. */
   const [homeSection, setHomeSection] = useState<HomeSection | null>(null);
+  const { activeSection, selectSection, startSettle } = useHomeSectionSpy(view === "home", homeSection);
 
   useEffect(() => {
     const onPopState = () => {
@@ -95,6 +98,7 @@ export default function App() {
   const navigate = (next: View, invoice: CheckoutInvoice | null = null, smooth = true) => {
     setCheckoutInvoice(invoice);
     setHomeSection(null);
+    selectSection(null);
     if (next !== "review") setReviewTarget(null);
     // SCRUM-22/27/43. Guests log in before opening checkout, order history or their profile.
     if ((next === "checkout" || next === "orders" || next === "profile") && !user) {
@@ -131,10 +135,12 @@ export default function App() {
   /** Scrolls to a section of the home page, opening the home page first when needed. */
   const goToSection = (section: HomeSection) => {
     if (view === "home") {
+      selectSection(section);
       scrollToSection(section);
       return;
     }
     navigate("home", null, false);
+    selectSection(section, true);
     setHomeSection(section);
   };
 
@@ -228,7 +234,10 @@ export default function App() {
     setShopSearch(brand);
   };
 
-  const sectionShown = useCallback(() => setHomeSection(null), []);
+  const sectionShown = useCallback(() => {
+    setHomeSection(null);
+    startSettle();
+  }, [startSettle]);
 
   const openProduct = (product: Product) => {
     setSelected(product);
@@ -265,9 +274,11 @@ export default function App() {
           key={selected.id}
           product={selected}
           addToCart={addToCart}
+          inWishlist={isInWishlist(wishlist, selected.id)}
           onWishlist={(product) => {
-            setWishlist((w) => (w.some((p) => String(p.id) === String(product.id)) ? w : [...w, product]));
-            notify("Saved to your wishlist");
+            const { items, saved } = toggleWishlistItem(wishlist, product);
+            setWishlist(items);
+            notify(saved ? "Saved to your wishlist" : "Removed from your wishlist");
           }}
           navigate={navigate}
           openCategory={openCategory}
@@ -410,6 +421,7 @@ export default function App() {
         logout={logout}
         nav={roleNav[role]}
         view={view}
+        activeSection={activeSection}
         navigate={navigate}
         goToSection={goToSection}
         cartCount={cart.items.reduce((sum, line) => sum + line.quantity, 0)}

@@ -1,23 +1,5 @@
 import { type View } from "../../app/navigation";
-import { LoopMark } from "../ui/Logo";
 import type { HomeSection } from "./Header";
-
-const STRIP_BACKGROUND = "#050B10";
-
-function StripRun({ hidden = false }: { hidden?: boolean }) {
-  return (
-    <span className="strip-run" aria-hidden={hidden || undefined}>
-      {[0, 1, 2, 3].map((index) => (
-        <span className="strip-unit" key={index}>
-          <span className="strip-name">RALLY</span>
-          <LoopMark width={38} height={19} backdrop={STRIP_BACKGROUND} />
-          <span className="strip-tagline">SPORTS STORE</span>
-          <LoopMark width={38} height={19} backdrop={STRIP_BACKGROUND} />
-        </span>
-      ))}
-    </span>
-  );
-}
 
 export function Footer({
   navigate,
@@ -60,16 +42,6 @@ export function Footer({
           <p>CS308 Team 19 · Sabancı University</p>
         </div>
       </div>
-      <button
-        className="logo-strip"
-        aria-label="RALLY, back to top"
-        onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-      >
-        <span className="marquee">
-          <StripRun />
-          <StripRun hidden />
-        </span>
-      </button>
       <div className="footer-bottom">
         <span>© {new Date().getFullYear()} RALLY · Every brand, every game</span>
         <span>Payments are simulated for the course demo</span>

@@ -96,7 +96,7 @@ export function Home({
       )}
       <GearCards />
       <JournalSection openCategory={openCategory} />
-      <section id="sale" className="sale-band">
+      <section id="sale" tabIndex={-1} className="sale-band">
         <div className="sale-glow" />
         <h2>
           Up to 30% off.

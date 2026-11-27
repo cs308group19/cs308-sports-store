@@ -313,7 +313,7 @@
   color: #c7d2dc;
   font-size: 14px;
   font-weight: 500;
-  transition: background var(--dur-fast);
+  transition: background var(--dur-fast), color var(--dur-fast);
 }
 .header--compact .header-nav button {
   padding-inline: 12px;
@@ -322,7 +322,7 @@
   background: rgba(255, 255, 255, 0.08);
   color: #fff;
 }
-.header-nav button.active {
+.header-nav button:is(.active, [aria-current="page"], [aria-current="true"]) {
   background: rgba(255, 255, 255, 0.12);
   color: #fff;
 }
@@ -471,8 +471,14 @@
 }
 .account-menu button:hover,
 .mobile-menu button:hover,
-.mobile-menu button.active {
+.mobile-menu button:is(.active, [aria-current="page"], [aria-current="true"]) {
   background: rgba(255, 255, 255, 0.1);
+}
+@media (forced-colors: active) {
+  .header-nav button:is(.active, [aria-current="page"], [aria-current="true"]),
+  .mobile-menu button:is(.active, [aria-current="page"], [aria-current="true"]) {
+    border: 1px solid currentColor;
+  }
 }
 .logout-button {
   border: 0;
@@ -1642,16 +1648,6 @@ td {
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
 }
-.mono-label {
-  color: var(--blue-light);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 3px;
-}
-.mono-label.hot {
-  color: var(--hot);
-}
 .pill {
   min-height: 52px;
   display: inline-flex;
@@ -2197,7 +2193,7 @@ td {
   margin-bottom: 32px;
 }
 .home-title h2 {
-  margin: 10px 0 0;
+  margin: 0;
   font-size: 64px;
   font-weight: 300;
   line-height: 1.1;
@@ -2369,7 +2365,9 @@ td {
   display: flex;
   gap: 18px;
   overflow-x: auto;
-  padding: 10px 40px 20px;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  padding: 16px 40px 24px;
   scroll-padding-inline: 40px;
   scroll-snap-type: x mandatory;
 }
@@ -2564,7 +2562,7 @@ footer {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 28px;
   margin: 0 auto;
-  padding: 48px 40px 8px;
+  padding: 48px 40px 32px;
   font-size: 14px;
   line-height: 2;
 }
@@ -2590,57 +2588,6 @@ footer {
 .footer-main p {
   margin: 0;
 }
-.logo-strip {
-  position: relative;
-  width: 100%;
-  display: block;
-  overflow: hidden;
-  margin-top: 36px;
-  padding: 17px 0;
-  border: 0;
-  background: #050b10;
-}
-.logo-strip::before,
-.logo-strip::after {
-  content: "";
-  position: absolute;
-  right: 0;
-  left: 0;
-  height: 1px;
-}
-.logo-strip::before {
-  top: 0;
-  background: linear-gradient(90deg, transparent, #38b6f0, #d83995, #fc734d, transparent);
-}
-.logo-strip::after {
-  bottom: 0;
-  background: linear-gradient(90deg, transparent, #fc734d, #d83995, #38b6f0, transparent);
-}
-.logo-strip .marquee {
-  animation-duration: 40s;
-}
-.strip-run,
-.strip-unit {
-  display: flex;
-  align-items: center;
-  gap: 28px;
-}
-.strip-run {
-  padding-right: 28px;
-}
-.strip-name {
-  color: #fff;
-  font-family: var(--font-logo);
-  font-size: 26px;
-  letter-spacing: 8px;
-}
-.strip-tagline {
-  color: var(--muted-dark);
-  font-family: var(--font-head);
-  font-size: 11px;
-  font-weight: 300;
-  letter-spacing: 6px;
-}
 .footer-bottom {
   max-width: 1280px;
   display: flex;
@@ -2648,7 +2595,8 @@ footer {
   justify-content: space-between;
   gap: 12px;
   margin: 0 auto;
-  padding: 18px 40px 84px;
+  padding: 20px 40px 84px;
+  border-top: 1px solid var(--panel-line);
   color: #6f7d8a;
   font-size: 12px;
 }
@@ -3294,6 +3242,23 @@ footer {
 .detail-actions .btn:first-child {
   flex: 1;
   box-shadow: 0 10px 30px rgba(2, 151, 222, 0.35);
+}
+.wishlist-button svg {
+  transition: fill var(--dur-fast) var(--ease-out);
+}
+.app--shop .wishlist-button[aria-pressed="true"] {
+  border-color: rgba(252, 115, 77, 0.55);
+  background: rgba(252, 115, 77, 0.12);
+  color: var(--hot);
+}
+.app--shop .wishlist-button[aria-pressed="true"]:hover:not(:disabled) {
+  border-color: var(--hot);
+}
+@media (forced-colors: active) {
+  .wishlist-button[aria-pressed="true"] {
+    border-color: Highlight;
+    color: Highlight;
+  }
 }
 .detail-copy dl {
   display: grid;
@@ -4600,7 +4565,7 @@ footer {
   outline-offset: 2px;
 }
 /* Buttons that fill a clipped box draw their ring on the inside. */
-.app :is(.logo-strip, .product-image):focus-visible {
+.app .product-image:focus-visible {
   outline-offset: -3px;
 }
 .table-wrap {
