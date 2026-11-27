@@ -13,7 +13,7 @@ import { decodeProtectedHeader, errors, jwtVerify } from 'jose';
 import type { Env } from '../config/env.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { AuthenticatedRequest } from './auth.types.js';
-import { IS_PUBLIC_KEY } from './decorators.js';
+import { IS_OPTIONAL_AUTH_KEY, IS_PUBLIC_KEY } from './decorators.js';
 import { JWKS, type Jwks } from './jwks.js';
 
 /**
@@ -58,6 +58,30 @@ export class SupabaseJwtGuard implements CanActivate {
     if (isPublic) return true;
 
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
+    const optional = this.reflector.getAllAndOverride<boolean | undefined>(
+      IS_OPTIONAL_AUTH_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+    if (!optional) {
+      await this.authenticate(request);
+      return true;
+    }
+    try {
+      await this.authenticate(request);
+    } catch (error) {
+      // No usable session: carry on as a guest. Anything else (database down) still fails.
+      if (
+        !(error instanceof UnauthorizedException) &&
+        !(error instanceof ServiceUnavailableException)
+      ) {
+        throw error;
+      }
+    }
+    return true;
+  }
+
+  /** Verifies the bearer token and attaches the profile to the request, or throws. */
+  private async authenticate(request: AuthenticatedRequest): Promise<void> {
     const token = this.extractBearerToken(request.headers.authorization);
     if (!token) throw new UnauthorizedException('Missing bearer token');
 
@@ -93,7 +117,6 @@ export class SupabaseJwtGuard implements CanActivate {
       throw new UnauthorizedException('No profile exists for this account');
 
     request.user = profile;
-    return true;
   }
 
   /** A token signed with the legacy shared secret only verifies when SUPABASE_JWT_SECRET is set. */
