@@ -73,25 +73,12 @@ export function Checkout({
   };
 
   return (
-    <div className="page narrow">
-      <div className="page-heading">
-        <span className="eyebrow">Secure checkout</span>
-        <h1>Delivery & payment</h1>
-      </div>
+    <div className="page checkout-page">
       <form className="checkout-grid" onSubmit={submit} autoComplete="off" aria-busy={submitting}>
-        <div className="checkout-form">
-          <h2>Delivery address</h2>
-          <label>
-            Recipient name
-            <input name="deliveryRecipient" required maxLength={120} defaultValue={customer.name} />
-          </label>
-          <label>
-            Full delivery address
-            <textarea name="deliveryAddress" required maxLength={500} rows={3} defaultValue={customer.homeAddress ?? ""} />
-          </label>
-          <h2>
-            Card details <span className="simulated">Simulated payment</span>
-          </h2>
+        <section className="checkout-form">
+          <h1>
+            Payment <span className="simulated">Simulated payment</span>
+          </h1>
           <label>
             Name on card
             <input name="cardholderName" required maxLength={120} />
@@ -110,29 +97,42 @@ export function Checkout({
               <input name="cvv" type="password" inputMode="numeric" required maxLength={4} />
             </label>
           </div>
-        </div>
+          <h2>Delivery address</h2>
+          <label>
+            Recipient name
+            <input name="deliveryRecipient" required maxLength={120} defaultValue={customer.name} />
+          </label>
+          <label>
+            Full delivery address
+            <textarea name="deliveryAddress" required maxLength={500} rows={3} defaultValue={customer.homeAddress ?? ""} />
+          </label>
+        </section>
         <aside className="summary">
           <h2>Your order</h2>
           {cart.items.map((line) => (
-            <div key={line.productId}>
+            <div className="summary-line" key={line.productId}>
+              <img src={line.imageUrl ?? "/images/photo-unavailable.svg"} alt="" width="64" height="64" />
               <span>
-                {line.name} × {line.quantity}
+                <b>{line.name}</b>
+                <small>Qty {line.quantity}</small>
               </span>
               <b>{money(line.lineTotal)}</b>
             </div>
           ))}
           {cart.items.length === 0 && <p>Your cart is empty.</p>}
-          <div>
-            <span>Subtotal</span>
-            <b>{money(subtotal)}</b>
-          </div>
-          <div>
-            <span>Delivery</span>
-            <b>{delivery === 0 ? "Free" : money(delivery)}</b>
-          </div>
-          <div>
-            <span>Taxes</span>
-            <b>{money(tax)}</b>
+          <div className="summary-rows">
+            <div>
+              <span>Subtotal</span>
+              <b>{money(subtotal)}</b>
+            </div>
+            <div>
+              <span>Delivery</span>
+              <b className={delivery === 0 ? "free" : ""}>{delivery === 0 ? "Free" : money(delivery)}</b>
+            </div>
+            <div>
+              <span>Taxes</span>
+              <b>{money(tax)}</b>
+            </div>
           </div>
           <div className="total">
             <span>Total</span>
@@ -140,13 +140,13 @@ export function Checkout({
           </div>
           {error && <p className="auth-error" role="alert">{error}</p>}
           <Button type="submit" disabled={submitting || cart.items.length === 0}>
-            {submitting ? "Placing order…" : "Place order"}
+            {submitting ? "Placing order…" : `Place order · ${money(total)}`}
           </Button>
           <button className="text-button" type="button" disabled={submitting} onClick={backToCart}>
             Back to cart
           </button>
           <small className="secure-note">
-            Use a fictional test card for this simulated payment.
+            Test card 4242 4242 4242 4242 is approved, any other number is declined.
           </small>
         </aside>
       </form>

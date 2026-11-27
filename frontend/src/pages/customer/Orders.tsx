@@ -10,10 +10,20 @@ import {
   trackerStep,
 } from "../../services/orderApi";
 import { formatInvoiceDate } from "../../utils/invoiceFormat";
+import { productStub } from "../../utils/productStub";
 import type { OrderHistoryItem } from "../../types/orderHistory";
+import type { Product } from "../../types/models";
 
 /** SCRUM-27. The customer's orders, newest first, each with its status, products and invoice. */
-export function Orders({ onOpenInvoice }: { onOpenInvoice: (invoiceId: string) => void }) {
+export function Orders({
+  onOpenInvoice,
+  onShop,
+  openProduct,
+}: {
+  onOpenInvoice: (invoiceId: string) => void;
+  onShop: () => void;
+  openProduct: (p: Product) => void;
+}) {
   const [orders, setOrders] = useState<OrderHistoryItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,11 +42,12 @@ export function Orders({ onOpenInvoice }: { onOpenInvoice: (invoiceId: string) =
   }, []);
 
   return (
-    <div className="page narrow">
-      <div className="page-heading">
-        <span className="eyebrow">Order history</span>
+    <div className="page orders-page">
+      <div className="orders-heading">
         <h1>My orders</h1>
-        <p>Track your deliveries and see what you bought.</p>
+        <button className="pill pill-blue" onClick={onShop}>
+          Continue shopping →
+        </button>
       </div>
 
       {error && <p role="alert">{error}</p>}
@@ -50,39 +61,37 @@ export function Orders({ onOpenInvoice }: { onOpenInvoice: (invoiceId: string) =
             <article className="order-card" key={order.id}>
               <div className="order-head">
                 <div>
-                  <small>ORDER</small>
-                  <b>{order.orderNumber}</b>
+                  <span className="order-number">ORDER {order.orderNumber}</span>
+                  <b>
+                    {formatInvoiceDate(order.placedAt)} · {money(order.total)}
+                  </b>
                 </div>
-                <div>
-                  <small>PLACED</small>
-                  <b>{formatInvoiceDate(order.placedAt)}</b>
+                <div className="order-state">
+                  <small>Status</small>
+                  <strong className={order.status}>{ORDER_STATUS_LABEL[order.status]}</strong>
                 </div>
-                <div>
-                  <small>TOTAL</small>
-                  <b>{money(order.total)}</b>
-                </div>
-                {order.invoiceId != null && (
-                  <Button
-                    variant="outline"
-                    onClick={() => onOpenInvoice(String(order.invoiceId))}
-                  >
-                    View invoice
-                  </Button>
-                )}
               </div>
 
-              {step ? (
-                <Tracker status={step} />
-              ) : (
-                <p>
-                  <span className="status red">{ORDER_STATUS_LABEL[order.status]}</span>
-                </p>
-              )}
+              {step && <Tracker status={step} />}
 
               <div className="order-products">
                 {order.items.map((line) => (
-                  <div className="order-product-line" key={line.id}>
-                    <img src={orderLineImage(line)} alt="" />
+                  <button
+                    className="order-product-line"
+                    key={line.id}
+                    onClick={() =>
+                      openProduct(
+                        productStub({
+                          id: line.productId,
+                          name: line.name,
+                          price: line.unitPricePaid,
+                          image: orderLineImage(line),
+                          model: line.model,
+                        }),
+                      )
+                    }
+                  >
+                    <img src={orderLineImage(line)} alt="" width="56" height="56" loading="lazy" />
                     <span>
                       <b>{line.name}</b>
                       <small>
@@ -90,9 +99,15 @@ export function Orders({ onOpenInvoice }: { onOpenInvoice: (invoiceId: string) =
                         {money(line.lineTotal)}
                       </small>
                     </span>
-                  </div>
+                  </button>
                 ))}
               </div>
+
+              {order.invoiceId != null && (
+                <Button variant="outline" onClick={() => onOpenInvoice(String(order.invoiceId))}>
+                  View invoice
+                </Button>
+              )}
             </article>
           );
         })}

@@ -1,22 +1,34 @@
-import type { CartView } from "../../types/models";
+import type { CartView, CartViewItem, Product } from "../../types/models";
 import { type View } from "../../app/navigation";
 import { Button } from "../../components/ui/Button";
 import { cartTotals } from "../../utils/cartTotals";
 import { money } from "../../utils/format";
+import { productStub } from "../../utils/productStub";
 
 export function Cart({
   cart,
   changeQuantity,
   removeItem,
   navigate,
+  openProduct,
 }: {
   cart: CartView;
   changeQuantity: (productId: string, quantity: number) => void;
   removeItem: (productId: string) => void;
   navigate: (v: View) => void;
+  openProduct: (p: Product) => void;
 }) {
   // The same amounts as the checkout page, worked out in cents (utils/cartTotals.ts).
   const { subtotal, delivery, tax, total } = cartTotals(cart.items);
+  const open = (line: CartViewItem) =>
+    openProduct(
+      productStub({
+        id: line.productId,
+        name: line.name,
+        price: line.price,
+        image: line.imageUrl ?? "/images/photo-unavailable.svg",
+      }),
+    );
   return (
     <div className="page narrow">
       <div className="page-heading">
@@ -30,9 +42,13 @@ export function Cart({
           <div className="cart-list">
             {cart.items.map((line) => (
               <article className="cart-line" key={line.productId}>
-                {line.imageUrl && <img src={line.imageUrl} alt="" />}
+                <button className="cart-photo" aria-label={`View ${line.name}`} onClick={() => open(line)}>
+                  {line.imageUrl && <img src={line.imageUrl} alt="" />}
+                </button>
                 <div>
-                  <h3>{line.name}</h3>
+                  <h3>
+                    <button onClick={() => open(line)}>{line.name}</button>
+                  </h3>
                   <b>{money(line.price)}</b>
                   {line.quantity >= line.stock && <small>Only {line.stock} left in stock</small>}
                 </div>

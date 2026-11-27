@@ -260,6 +260,8 @@ export default function App() {
             notify("Saved to your wishlist");
           }}
           navigate={navigate}
+          openCategory={openCategory}
+          openBrand={openBrand}
           refreshKey={catalogueVersion}
         />
       );
@@ -270,6 +272,7 @@ export default function App() {
           changeQuantity={changeCartQuantity}
           removeItem={removeFromCart}
           navigate={navigate}
+          openProduct={openProduct}
         />
       );
     if (view === "login")
@@ -327,6 +330,8 @@ export default function App() {
         <Orders
           key={user.id}
           onOpenInvoice={(invoiceId) => navigate("invoice", { id: invoiceId, customerId: user.id })}
+          onShop={() => navigate("shop")}
+          openProduct={openProduct}
         />
       ) : null;
     if (view === "wishlist")
@@ -360,7 +365,8 @@ export default function App() {
         mobileOpen={mobileOpen}
         setMobileOpen={setMobileOpen}
       />
-      <main>{screen}</main>
+      {/* Every shop page except the home page sits on two soft glows. */}
+      <main className={view !== "home" && !staffViews.has(view) ? "glow-page" : undefined}>{screen}</main>
       {role === "Customer" && (
         <Footer navigate={navigate} openCategory={openCategory} goToSection={goToSection} signedIn={Boolean(user)} />
       )}
