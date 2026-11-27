@@ -1965,7 +1965,7 @@ td {
 .drop-card {
   position: absolute;
   right: 40px;
-  bottom: 96px;
+  bottom: 118px;
   max-width: 420px;
   display: flex;
   align-items: center;
@@ -2796,7 +2796,7 @@ footer {
   }
   .drop-card {
     right: 12px;
-    bottom: 76px;
+    bottom: 104px;
     left: 12px;
     max-width: none;
   }
@@ -4588,6 +4588,7 @@ footer {
 .rally {
   position: fixed;
   z-index: 50;
+  box-sizing: content-box;
   right: 28px;
   bottom: 28px;
   width: 68px;
@@ -4638,7 +4639,7 @@ footer {
   outline-offset: -5px;
 }
 .rally-inner {
-  width: 398px;
+  width: 400px;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -4678,11 +4679,9 @@ footer {
   letter-spacing: 4px;
 }
 .rally-title small {
-  overflow: hidden;
   color: var(--green-light);
   font-size: 12px;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  line-height: 1.25;
 }
 .rally-human {
   flex: none;
@@ -4865,6 +4864,7 @@ footer {
   font-size: 14px;
 }
 .rally .rally-compose input:focus {
+  outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(2, 151, 222, 0.25);
 }
@@ -4928,6 +4928,12 @@ footer {
   .rally.is-open {
     right: 12px;
     bottom: 12px;
+  }
+}
+/* Short phones have no room to lift the drop card: it stays where it was. */
+@media (max-width: 700px) and (max-height: 700px) {
+  .intro .drop-card {
+    bottom: 76px;
   }
 }
 @media (max-width: 479.98px) {
