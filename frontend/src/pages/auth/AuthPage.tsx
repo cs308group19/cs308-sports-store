@@ -5,6 +5,7 @@ import type { SessionUser } from "../../auth/types";
 import { AccountCreatedError, useAuth } from "../../auth/AuthProvider";
 import { Button } from "../../components/ui/Button";
 import { Icon } from "../../components/ui/Icon";
+import { Logo } from "../../components/ui/Logo";
 import { ApiError } from "../../lib/api";
 
 function describeError(error: unknown): string {
@@ -82,11 +83,7 @@ export function AuthPage({
     <div className="auth-page">
       <div className="auth-art">
         <button className="auth-brand" onClick={onCancel}>
-          <span className="brand-mark">R</span>
-          <span className="brand-lockup">
-            <b>RALLY</b>
-            <small>Play it your way</small>
-          </span>
+          <Logo backdrop="#02070A" />
         </button>
         <h2>
           Every goal starts

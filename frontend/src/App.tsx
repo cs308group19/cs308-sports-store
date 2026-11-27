@@ -7,7 +7,7 @@ import { type View, roleDefaults, roleNav, staffViews } from "./app/navigation";
 import { useAuth } from "./auth/AuthProvider";
 import type { SessionUser } from "./auth/types";
 import { Footer } from "./components/layout/Footer";
-import { Header } from "./components/layout/Header";
+import { Header, type HomeSection } from "./components/layout/Header";
 import { SupportChat } from "./components/layout/SupportChat";
 import { Button } from "./components/ui/Button";
 import { Icon } from "./components/ui/Icon";
@@ -22,6 +22,7 @@ import { Profile } from "./pages/customer/Profile";
 import { ReviewForm } from "./pages/customer/ReviewForm";
 import { Shop } from "./pages/customer/Shop";
 import { Wishlist } from "./pages/customer/Wishlist";
+import { scrollToSection } from "./utils/scrollToSection";
 import { Deliveries } from "./pages/product-manager/Deliveries";
 import { ProductManagement } from "./pages/product-manager/ProductManagement";
 import { ReviewQueue } from "./pages/product-manager/ReviewQueue";
@@ -53,6 +54,8 @@ export default function App() {
   const [toast, setToast] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  /** A home page section waiting to be scrolled to once the home page has its products. */
+  const [homeSection, setHomeSection] = useState<HomeSection | null>(null);
 
   useEffect(() => {
     const onPopState = () => {
@@ -84,6 +87,7 @@ export default function App() {
 
   const navigate = (next: View, invoice: CheckoutInvoice | null = null) => {
     setCheckoutInvoice(invoice);
+    setHomeSection(null);
     // SCRUM-22/27/43. Guests log in before opening checkout, order history or their profile.
     if ((next === "checkout" || next === "orders" || next === "profile") && !user) {
       setAuthOrigin(view);
@@ -111,6 +115,16 @@ export default function App() {
     window.history.pushState({}, "", next === "login" ? "/auth" : "/");
     setMobileOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  /** Scrolls to a section of the home page, opening the home page first when needed. */
+  const goToSection = (section: HomeSection) => {
+    if (view === "home") {
+      scrollToSection(section);
+      return;
+    }
+    navigate("home");
+    setHomeSection(section);
   };
 
   const finishAuthentication = (account: SessionUser) => {
@@ -310,10 +324,10 @@ export default function App() {
     return <SupportDesk notify={notify} />;
   })();
 
-  if (loading) return <div className="app" aria-busy="true" />;
+  if (loading) return <div className="app app--shop" aria-busy="true" />;
 
   return (
-    <div className="app">
+    <div className={`app ${staffViews.has(view) ? "app--staff" : "app--shop"}`}>
       <Header
         role={role}
         user={user}
@@ -321,6 +335,7 @@ export default function App() {
         nav={roleNav[role]}
         view={view}
         navigate={navigate}
+        goToSection={goToSection}
         cartCount={cart.items.reduce((sum, line) => sum + line.quantity, 0)}
         mobileOpen={mobileOpen}
         setMobileOpen={setMobileOpen}

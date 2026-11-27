@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { type View } from "../../app/navigation";
 import { Button } from "../../components/ui/Button";
 import { Icon } from "../../components/ui/Icon";
+import { Logo } from "../../components/ui/Logo";
 import {
   fetchInvoice,
   fetchInvoicePdf,
@@ -124,13 +125,7 @@ export function Invoice({
       <article className="invoice">
         <div className="invoice-head">
           <div className="invoice-seller">
-            <div className="brand">
-              <span className="brand-mark">R</span>
-              <span className="brand-lockup">
-                <b>RALLY</b>
-                <small>Play it your way</small>
-              </span>
-            </div>
+            <Logo size="large" tone="dark" />
             <b>{seller.name}</b>
             <span>{seller.address}</span>
             <span>
