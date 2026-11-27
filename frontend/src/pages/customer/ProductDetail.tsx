@@ -5,7 +5,9 @@ import { Button } from "../../components/ui/Button";
 import { Icon } from "../../components/ui/Icon";
 import { SectionHead } from "../../components/ui/SectionHead";
 import { Skeleton } from "../../components/ui/Skeleton";
+import { ImageZoom } from "../../components/ui/ImageZoom";
 import { Stars } from "../../components/ui/Stars";
+import { TiltCard } from "../../components/ui/TiltCard";
 import { ApiError } from "../../lib/api";
 import { fetchProductDetail } from "../../services/productApi";
 import { brandOf } from "../../utils/brands";
@@ -41,6 +43,8 @@ export function ProductDetail({
   const [product, setProduct] = useState<Product>(initial);
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const prevInitial = useRef(initial);
+  const [zoomed, setZoomed] = useState(false);
+  const photo = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -129,10 +133,31 @@ export function ProductDetail({
         )}
       </nav>
       <div className="product-detail" aria-busy={state.status === "loading"}>
-        <div className="detail-image">
-          <img src={product.image} alt={product.name} width="800" height="800" />
-          {product.oldPrice && <span className="discount">SALE</span>}
-        </div>
+        <TiltCard max={10} className="detail-tilt">
+          <button
+            ref={photo}
+            className="detail-image"
+            aria-label="Zoom product photo"
+            aria-haspopup="dialog"
+            onClick={() => setZoomed(true)}
+          >
+            <img src={product.image} alt={product.name} width="800" height="800" />
+            {product.oldPrice && <span className="discount">SALE</span>}
+            <span className="zoom-hint" aria-hidden="true">
+              <Icon name="zoom" size={16} /> Click to zoom
+            </span>
+          </button>
+        </TiltCard>
+        {zoomed && (
+          <ImageZoom
+            src={product.image}
+            alt={product.name}
+            onClose={() => {
+              setZoomed(false);
+              photo.current?.focus();
+            }}
+          />
+        )}
         <div className="detail-copy">
           <span className="detail-label">{brand ? `${brand} · ${product.category}` : product.category}</span>
           <h1>{product.name}</h1>

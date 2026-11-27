@@ -3241,7 +3241,11 @@ footer {
 }
 .detail-image {
   position: relative;
+  width: 100%;
+  display: block;
   overflow: hidden;
+  padding: 0;
+  cursor: zoom-in;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 24px;
   background: #fff;
@@ -4278,6 +4282,110 @@ footer {
   .category-tile:hover img,
   .category-tile:focus-visible img {
     transform: none;
+  }
+}
+
+/* ---------- Product photo tilt and zoom ---------- */
+.detail-tilt {
+  height: auto;
+}
+.detail-tilt .tilt-glare {
+  border-radius: 24px;
+}
+.detail-tilt[data-tilting] .detail-image {
+  box-shadow: 0 40px 70px rgba(0, 0, 0, 0.5);
+}
+.zoom-hint {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--r-pill);
+  background: rgba(7, 26, 51, 0.82);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+}
+.zoom-hint svg {
+  width: 16px;
+  height: 16px;
+}
+.zoom {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: rgba(4, 12, 24, 0.92);
+  touch-action: none;
+}
+.zoom img {
+  width: min(80vmin, 680px);
+  height: auto;
+  aspect-ratio: 1;
+  border-radius: 16px;
+  background: #fff;
+  object-fit: contain;
+  cursor: zoom-in;
+  user-select: none;
+  transform: translate(var(--x, 0px), var(--y, 0px)) scale(var(--zoom, 1));
+  transition: transform 0.12s ease-out;
+}
+.zoom img[data-zoomed="true"] {
+  cursor: grab;
+}
+.zoom-controls {
+  position: absolute;
+  bottom: 28px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  border-radius: var(--r-pill);
+  background: #fff;
+  color: var(--ink);
+  transform: translateX(-50%);
+}
+.zoom-controls button {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 20px;
+}
+.zoom-controls button:disabled {
+  color: #9aa7b3;
+  cursor: default;
+}
+.zoom-controls b {
+  min-width: 52px;
+  font-size: 14px;
+  text-align: center;
+}
+.zoom-close {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--ink);
+}
+@media (prefers-reduced-motion: reduce) {
+  .zoom img {
+    transition: none;
   }
 }
 
