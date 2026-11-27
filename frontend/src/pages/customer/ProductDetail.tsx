@@ -167,7 +167,7 @@ export function ProductDetail({
           eyebrow="Athlete feedback"
           title="Ratings & reviews"
           action="Write a review"
-          onAction={() => navigate("review")}
+          onAction={() => navigate("orders")}
         />
         <ReviewList state={state} />
       </section>
@@ -179,7 +179,7 @@ function ReviewList({ state }: { state: LoadState }) {
   if (state.status === "loading") return <p className="empty">Loading reviews…</p>;
   if (state.status !== "ready") return <p className="empty">Reviews could not be loaded.</p>;
   if (state.comments.length === 0)
-    return <p className="empty">No reviews yet. Customers can review after delivery.</p>;
+    return <p className="empty">No approved comments yet. Customers can review after delivery.</p>;
 
   return (
     <div className="review-cards">
@@ -188,7 +188,7 @@ function ReviewList({ state }: { state: LoadState }) {
           <Stars rating={review.rating} />
           <p>“{review.comment}”</p>
           <b>{review.author}</b>
-          <small>Verified buyer · {new Date(review.createdAt).toLocaleDateString("en-US")}</small>
+          <small>Verified buyer · {new Date(review.publishedAt ?? review.createdAt).toLocaleDateString("en-US")}</small>
         </article>
       ))}
     </div>

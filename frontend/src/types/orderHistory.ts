@@ -1,6 +1,8 @@
 /** SCRUM-27. One order as GET /api/me/orders returns it (backend/src/orders/order-history.types.ts). */
 export type OrderHistoryStatus = "processing" | "in_transit" | "delivered" | "cancelled";
 
+export type CommentStatus = "pending" | "approved" | "rejected";
+
 export interface OrderHistoryLine {
   /** The order line's own id, unique even when the same product appears twice. */
   id: number | string;
@@ -13,6 +15,12 @@ export interface OrderHistoryLine {
   /** What the customer paid for one unit, after any discount. */
   unitPricePaid: number;
   lineTotal: number;
+  delivered: boolean;
+  review: {
+    rating: number;
+    hasComment?: boolean;
+    commentStatus: CommentStatus | null;
+  } | null;
 }
 
 export interface OrderHistoryItem {
