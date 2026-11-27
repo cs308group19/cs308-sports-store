@@ -1,3 +1,5 @@
+import type { ReviewStatus } from '../generated/prisma/enums.js';
+
 /** The four statuses an order can have (prisma OrderStatus). */
 export const ORDER_HISTORY_STATUSES = [
   'processing',
@@ -20,6 +22,12 @@ export interface OrderHistoryLine {
   quantity: number;
   unitPricePaid: number;
   lineTotal: number;
+  delivered: boolean;
+  review: {
+    rating: number;
+    hasComment: boolean;
+    commentStatus: Exclude<ReviewStatus, 'not_applicable'> | null;
+  } | null;
 }
 
 /** One entry of GET /api/me/orders. */

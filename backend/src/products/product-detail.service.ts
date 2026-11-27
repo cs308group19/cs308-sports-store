@@ -4,7 +4,7 @@ import { toProductDetail } from './product-detail.mapper.js';
 import { PRODUCT_SUMMARY_SELECT } from './product.select.js';
 import type { ProductDetailResponse } from './product-detail.types.js';
 
-/** How many approved comments the detail page shows (newest first). */
+/** How many recently published comments the detail page shows. */
 export const DETAIL_COMMENT_LIMIT = 20;
 
 @Injectable()
@@ -18,8 +18,12 @@ export class ProductDetailService {
       select: {
         ...PRODUCT_SUMMARY_SELECT,
         reviews: {
-          where: { commentStatus: 'approved' },
-          orderBy: { createdAt: 'desc' },
+          where: { commentStatus: 'approved', comment: { not: null } },
+          orderBy: [
+            { moderatedAt: { sort: 'desc', nulls: 'last' } },
+            { createdAt: 'desc' },
+            { id: 'desc' },
+          ],
           take: DETAIL_COMMENT_LIMIT,
           select: {
             id: true,
@@ -27,6 +31,7 @@ export class ProductDetailService {
             comment: true,
             commentStatus: true,
             createdAt: true,
+            moderatedAt: true,
             user: { select: { fullName: true } },
           },
         },

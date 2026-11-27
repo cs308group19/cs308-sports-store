@@ -10,10 +10,13 @@ import {
   trackerStep,
 } from "../../services/orderApi";
 import { formatInvoiceDate } from "../../utils/invoiceFormat";
-import type { OrderHistoryItem } from "../../types/orderHistory";
+import type { OrderHistoryItem, OrderHistoryLine } from "../../types/orderHistory";
 
 /** SCRUM-27. The customer's orders, newest first, each with its status, products and invoice. */
-export function Orders({ onOpenInvoice }: { onOpenInvoice: (invoiceId: string) => void }) {
+export function Orders({ onOpenInvoice, onReview }: {
+  onOpenInvoice: (invoiceId: string) => void;
+  onReview: (line: OrderHistoryLine) => void;
+}) {
   const [orders, setOrders] = useState<OrderHistoryItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -89,7 +92,18 @@ export function Orders({ onOpenInvoice }: { onOpenInvoice: (invoiceId: string) =
                         Qty {line.quantity} · Paid {money(line.unitPricePaid)} each ·{" "}
                         {money(line.lineTotal)}
                       </small>
+                      {line.review && (
+                        <small>
+                          Your rating: {line.review.rating}/5
+                          {line.review.commentStatus && ` · Comment ${line.review.commentStatus}`}
+                        </small>
+                      )}
                     </span>
+                    {line.delivered && !(line.review?.hasComment ?? Boolean(line.review?.commentStatus)) && (
+                      <Button type="button" variant="outline" onClick={() => onReview(line)}>
+                        {line.review ? "Add a comment" : "Write a review"}
+                      </Button>
+                    )}
                   </div>
                 ))}
               </div>

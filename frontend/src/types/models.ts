@@ -29,6 +29,7 @@ export interface ProductComment {
   comment: string;
   author: string;
   createdAt: string;
+  publishedAt?: string;
 }
 
 export interface OrderProduct {

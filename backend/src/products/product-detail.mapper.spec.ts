@@ -14,6 +14,7 @@ const review = (
   comment: 'Great shoes',
   commentStatus: 'approved',
   createdAt: new Date('2026-11-20T10:00:00Z'),
+  moderatedAt: null,
   user: { fullName: 'Jamie Taylor' },
   ...overrides,
 });
@@ -124,6 +125,19 @@ describe('toProductDetail', () => {
       comment: 'Great shoes',
       author: 'Jamie T.',
       createdAt: '2026-11-20T10:00:00.000Z',
+      publishedAt: '2026-11-20T10:00:00.000Z',
+    });
+  });
+
+  it('uses approval time for publication even when a rating was created earlier', () => {
+    const [comment] = toProductDetail(
+      row({
+        reviews: [review({ moderatedAt: new Date('2026-11-25T10:00:00Z') })],
+      }),
+    ).comments;
+    expect(comment).toMatchObject({
+      createdAt: '2026-11-20T10:00:00.000Z',
+      publishedAt: '2026-11-25T10:00:00.000Z',
     });
   });
 });
