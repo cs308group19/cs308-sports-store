@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "../../components/ui/Button";
+import { EmptyState } from "../../components/ui/EmptyState";
+import { Skeleton } from "../../components/ui/Skeleton";
 import { Tracker } from "../../components/ui/Tracker";
 import { money } from "../../utils/format";
 import {
@@ -51,8 +53,24 @@ export function Orders({
       </div>
 
       {error && <p role="alert">{error}</p>}
-      {!error && orders === null && <p>Loading your orders…</p>}
-      {orders?.length === 0 && <p>You have not placed any orders yet.</p>}
+      {!error && orders === null && (
+        <div className="order-list">
+          <span className="sr-only" role="status">
+            Loading your orders
+          </span>
+          <Skeleton className="order-skeleton" />
+          <Skeleton className="order-skeleton" />
+        </div>
+      )}
+      {orders?.length === 0 && (
+        <EmptyState
+          icon="truck"
+          title="No orders yet"
+          text="When you place an order, you can follow its delivery here."
+          action="Start shopping"
+          onAction={onShop}
+        />
+      )}
 
       <div className="order-list">
         {orders?.map((order) => {

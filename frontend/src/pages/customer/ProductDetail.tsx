@@ -35,7 +35,7 @@ export function ProductDetail({
 }: {
   product: Product;
   addToCart: (p: Product) => void;
-  onWishlist: () => void;
+  onWishlist: (p: Product) => void;
   navigate: (v: View) => void;
   openCategory: (slug: string) => void;
   openBrand: (brand: string) => void;
@@ -197,7 +197,7 @@ export function ProductDetail({
             >
               {inStock ? "Add to cart" : "Out of stock"} <Icon name="bag" size={18} />
             </Button>
-            <Button variant="outline" aria-label="Add to wishlist" onClick={onWishlist}>
+            <Button variant="outline" aria-label="Add to wishlist" onClick={() => onWishlist(product)}>
               <Icon name="heart" />
             </Button>
           </div>
@@ -260,7 +260,16 @@ export function ProductDetail({
 }
 
 function ReviewList({ state }: { state: LoadState }) {
-  if (state.status === "loading") return <p className="empty">Loading reviews…</p>;
+  if (state.status === "loading")
+    return (
+      <div className="review-cards">
+        <span className="sr-only" role="status">
+          Loading reviews
+        </span>
+        <Skeleton className="review-skeleton" />
+        <Skeleton className="review-skeleton" />
+      </div>
+    );
   if (state.status !== "ready") return <p className="empty">Reviews could not be loaded.</p>;
   if (state.comments.length === 0)
     return <p className="empty">No reviews yet. Customers can review after delivery.</p>;

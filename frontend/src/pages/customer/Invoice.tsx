@@ -3,6 +3,7 @@ import { type View } from "../../app/navigation";
 import { Button } from "../../components/ui/Button";
 import { Icon } from "../../components/ui/Icon";
 import { Logo } from "../../components/ui/Logo";
+import { Skeleton } from "../../components/ui/Skeleton";
 import {
   fetchInvoice,
   fetchInvoicePdf,
@@ -67,8 +68,13 @@ export function Invoice({
   if (state.kind === "loading")
     return (
       <div className="page invoice-page" aria-busy="true">
-        <span className="eyebrow">Invoice</span>
-        <h1>Loading your invoice…</h1>
+        <span className="sr-only" role="status">
+          Loading your invoice
+        </span>
+        <Skeleton style={{ width: 64, height: 64, borderRadius: "50%", margin: "0 auto 20px" }} />
+        <Skeleton style={{ width: "50%", height: 52, margin: "0 auto 16px" }} />
+        <Skeleton style={{ width: "70%", margin: "0 auto" }} />
+        <Skeleton className="invoice-skeleton" />
       </div>
     );
 

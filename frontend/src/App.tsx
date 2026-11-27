@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Role, Product, CartView } from "./types/models";
 import { ApiError } from "./lib/api";
 import { addCartItem, cartErrorMessage, fetchCart, mergeGuestCart, removeCartItem, setCartQuantity } from "./services/cartApi";
-import { products } from "./services/mockStore";
 import { type View, roleDefaults, roleNav, staffViews } from "./app/navigation";
 import { useAuth } from "./auth/AuthProvider";
 import type { SessionUser } from "./auth/types";
@@ -10,6 +9,7 @@ import { Footer } from "./components/layout/Footer";
 import { Header, type HomeSection } from "./components/layout/Header";
 import { SupportChat } from "./components/layout/SupportChat";
 import { Button } from "./components/ui/Button";
+import { Skeleton } from "./components/ui/Skeleton";
 import { Toast, type ToastContent } from "./components/ui/Toast";
 import { AuthPage } from "./pages/auth/AuthPage";
 import { Cart } from "./pages/customer/Cart";
@@ -43,13 +43,14 @@ export default function App() {
   const [view, setView] = useState<View>(window.location.pathname === "/auth" ? "login" : "home");
   const [returnTo, setReturnTo] = useState<View>("home");
   const [authOrigin, setAuthOrigin] = useState<View>("home");
-  const [selected, setSelected] = useState<Product>(products[0]);
+  /** The product on the product page; set by openProduct. */
+  const [selected, setSelected] = useState<Product | null>(null);
   const [cart, setCart] = useState<CartView>({ items: [], total: 0 });
   const [cartLoad, setCartLoad] = useState<{ userId: string; status: "ready" | "failed" } | null>(null);
   const [cartRetry, setCartRetry] = useState(0);
   const [checkoutInvoice, setCheckoutInvoice] = useState<CheckoutInvoice | null>(null);
   const [catalogueVersion, setCatalogueVersion] = useState(0);
-  const [wishlist, setWishlist] = useState<Product[]>([products[0], products[4]]);
+  const [wishlist, setWishlist] = useState<Product[]>([]);
   const [shopCategory, setShopCategory] = useState("");
   const [shopSearch, setShopSearch] = useState("");
   const [toast, setToast] = useState<ToastContent | null>(null);
@@ -140,6 +141,7 @@ export default function App() {
   };
 
   const logout = async () => {
+    setMobileOpen(false);
     await signOut();
     setView("home");
     window.history.pushState({}, "", "/");
@@ -250,13 +252,14 @@ export default function App() {
           refreshKey={catalogueVersion}
         />
       );
-    if (view === "product")
+    if (view === "product" && selected)
       return (
         <ProductDetail
+          key={selected.id}
           product={selected}
           addToCart={addToCart}
-          onWishlist={() => {
-            setWishlist((w) => (w.some((p) => p.id === selected.id) ? w : [...w, selected]));
+          onWishlist={(product) => {
+            setWishlist((w) => (w.some((p) => String(p.id) === String(product.id)) ? w : [...w, product]));
             notify("Saved to your wishlist");
           }}
           navigate={navigate}
@@ -313,7 +316,12 @@ export default function App() {
               <Button onClick={() => setCartRetry((attempt) => attempt + 1)}>Try again</Button>
             </>
           ) : (
-            <p role="status">Loading your cart…</p>
+            <>
+              <span className="sr-only" role="status">
+                Loading your cart
+              </span>
+              <Skeleton style={{ height: 320, borderRadius: 26 }} />
+            </>
           )}
         </div>
       );
@@ -335,7 +343,14 @@ export default function App() {
         />
       ) : null;
     if (view === "wishlist")
-      return <Wishlist products={wishlist} openProduct={openProduct} addToCart={addToCart} />;
+      return (
+        <Wishlist
+          products={wishlist}
+          openProduct={openProduct}
+          addToCart={addToCart}
+          onShop={() => navigate("shop")}
+        />
+      );
     if (view === "profile") return user ? <Profile user={user} navigate={navigate} /> : null;
     if (view === "review") return <ReviewForm notify={notify} navigate={navigate} />;
     if (view === "pm-products") return <ProductManagement notify={notify} />;

@@ -1,6 +1,8 @@
 import type { CartView, CartViewItem, Product } from "../../types/models";
 import { type View } from "../../app/navigation";
 import { Button } from "../../components/ui/Button";
+import { EmptyState } from "../../components/ui/EmptyState";
+import { cartLineImage } from "../../services/productPhotos";
 import { cartTotals } from "../../utils/cartTotals";
 import { money } from "../../utils/format";
 import { productStub } from "../../utils/productStub";
@@ -26,7 +28,7 @@ export function Cart({
         id: line.productId,
         name: line.name,
         price: line.price,
-        image: line.imageUrl ?? "/images/photo-unavailable.svg",
+        image: cartLineImage(line),
       }),
     );
   return (
@@ -36,14 +38,20 @@ export function Cart({
         <h1>Shopping cart</h1>
       </div>
       {cart.items.length === 0 ? (
-        <p>Your cart is empty.</p>
+        <EmptyState
+          icon="bag"
+          title="Your cart is empty"
+          text="Pick your game and add the gear you need."
+          action="Start shopping"
+          onAction={() => navigate("shop")}
+        />
       ) : (
         <div className="cart-layout">
           <div className="cart-list">
             {cart.items.map((line) => (
               <article className="cart-line" key={line.productId}>
                 <button className="cart-photo" aria-label={`View ${line.name}`} onClick={() => open(line)}>
-                  {line.imageUrl && <img src={line.imageUrl} alt="" />}
+                  <img src={cartLineImage(line)} alt="" width="110" height="110" loading="lazy" />
                 </button>
                 <div>
                   <h3>

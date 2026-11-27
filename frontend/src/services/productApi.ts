@@ -1,4 +1,5 @@
 import { cataloguePhoto } from "./cataloguePhoto";
+import { rememberPhoto } from "./productPhotos";
 import { apiFetch } from "../lib/api";
 import type { Category, Product, ProductComment } from "../types/models";
 
@@ -43,6 +44,8 @@ export interface ProductDetail extends Product {
 }
 
 export function toProduct(response: ProductSummaryResponse): Product {
+  const image = response.image?.trim() || cataloguePhoto(response.model);
+  rememberPhoto(response.id, image);
   return {
     id: response.id,
     name: response.name,
@@ -53,7 +56,7 @@ export function toProduct(response: ProductSummaryResponse): Product {
     reviews: response.reviews,
     stock: response.stock,
     popularity: response.popularity,
-    image: response.image?.trim() || cataloguePhoto(response.model),
+    image,
     model: response.model,
     serial: response.serial,
     warranty: response.warranty,

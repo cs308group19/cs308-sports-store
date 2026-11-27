@@ -6,6 +6,7 @@ import { Button } from "../../components/ui/Button";
 import { ApiError } from "../../lib/api";
 import { fetchCart } from "../../services/cartApi";
 import { placeOrder } from "../../services/checkoutApi";
+import { cartLineImage } from "../../services/productPhotos";
 import { cardDigits, formatCardNumber, formatExpiry } from "../../utils/cardFormat";
 import { cartTotals } from "../../utils/cartTotals";
 import { checkoutValidationError } from "../../utils/checkoutValidation";
@@ -196,7 +197,7 @@ export function Checkout({
           <h2>Your order</h2>
           {cart.items.map((line) => (
             <div className="summary-line" key={line.productId}>
-              <img src={line.imageUrl ?? "/images/photo-unavailable.svg"} alt="" width="64" height="64" />
+              <img src={cartLineImage(line)} alt="" width="64" height="64" />
               <span>
                 <b>{line.name}</b>
                 <small>Qty {line.quantity}</small>
