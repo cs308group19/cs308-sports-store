@@ -506,7 +506,8 @@
   .header .desktop-only {
     display: none;
   }
-  .header-actions {
+  .header-actions,
+  .header-steps + .header-actions {
     margin-left: auto;
   }
   .menu-button {
@@ -553,7 +554,7 @@
 }
 .eyebrow {
   display: block;
-  color: var(--orange);
+  color: var(--accent-ink);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.14em;
@@ -565,7 +566,7 @@
 }
 .btn {
   min-height: 44px;
-  border-radius: 7px;
+  border-radius: var(--r-pill);
   padding: 0 19px;
   border: 1px solid transparent;
   display: inline-flex;
@@ -588,7 +589,7 @@
   color: white;
 }
 .btn-primary:hover {
-  background: #db4815;
+  background: var(--accent-ink);
 }
 .btn-dark {
   background: var(--navy);
@@ -672,8 +673,8 @@ textarea {
 input:focus,
 select:focus,
 textarea:focus {
-  border-color: #6783a2;
-  box-shadow: 0 0 0 3px #183f6d12;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(2, 151, 222, 0.18);
 }
 .auth-page {
   min-height: calc(100vh - 74px);
@@ -683,7 +684,7 @@ textarea:focus {
 }
 .auth-art {
   background:
-    linear-gradient(#071a33dd, #071a33dd),
+    linear-gradient(rgba(2, 7, 10, 0.87), rgba(2, 7, 10, 0.87)),
     url("/images/basketball-court.webp")
       center/cover;
   color: white;
@@ -838,7 +839,7 @@ label textarea {
 .form-switch button {
   border: 0;
   background: none;
-  color: var(--orange);
+  color: var(--accent-ink);
   font-weight: 700;
 }
 .guest-note {
@@ -921,7 +922,7 @@ label textarea {
   font-size: 10px;
 }
 .stat-card span.warning {
-  color: var(--orange);
+  color: var(--accent-ink);
 }
 .inline-form,
 .filters {
@@ -1015,8 +1016,8 @@ td {
   color: #1f5fbf;
 }
 .orange-status {
-  color: #c94d1d;
-  background: var(--orange-light);
+  color: #a93a16;
+  background: #ffede7;
 }
 .danger-link {
   color: #a33;
@@ -1079,9 +1080,9 @@ td {
   padding: 16px;
   margin-bottom: 18px;
   background: var(--orange-light);
-  border: 1px solid #ffd1c0;
+  border: 1px solid var(--line);
   border-radius: 8px;
-  color: var(--orange);
+  color: var(--accent-ink);
 }
 .discount-builder {
   display: flex;
@@ -1119,11 +1120,11 @@ td {
   flex-direction: column;
 }
 .notice small {
-  color: #a65a3e;
+  color: var(--muted);
   margin-top: 3px;
 }
 .orange {
-  color: var(--orange);
+  color: var(--accent-ink);
 }
 .button-group {
   display: flex;
@@ -1253,7 +1254,7 @@ td {
   font-size: 11px;
 }
 .refund-amount b {
-  color: var(--orange);
+  color: var(--accent-ink);
   font-size: 16px;
 }
 .refund-amount > span {
@@ -3360,6 +3361,10 @@ footer {
   min-height: 52px;
   font-size: 16px;
 }
+.detail-actions .btn + .btn {
+  width: 52px;
+  padding: 0;
+}
 .detail-actions .btn:first-child {
   flex: 1;
   box-shadow: 0 10px 30px rgba(2, 151, 222, 0.35);
@@ -4752,7 +4757,7 @@ footer {
   margin: 80px auto;
   padding: 32px;
   background: white;
-  border: 1px solid #ffd1c0;
+  border: 1px solid var(--line);
   border-radius: 8px;
   line-height: 1.6;
 }

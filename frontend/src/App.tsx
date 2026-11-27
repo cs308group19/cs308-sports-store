@@ -137,6 +137,7 @@ export default function App() {
     const destination = account.role === "Customer" ? returnTo : roleDefaults[account.role];
     setView(staffViews.has(destination) && account.role === "Customer" ? "home" : destination);
     window.history.replaceState({}, "", "/");
+    window.scrollTo({ top: 0, behavior: "instant" });
     notify(`Welcome, ${account.name}`);
   };
 
