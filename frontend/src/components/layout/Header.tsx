@@ -3,7 +3,6 @@ import type { Role } from "../../types/models";
 import { type View, roleDefaults } from "../../app/navigation";
 import type { SessionUser } from "../../auth/types";
 import { useRafScroll } from "../../hooks/useRafScroll";
-import { clamp } from "../../utils/motion";
 import { Icon } from "../ui/Icon";
 import { Logo } from "../ui/Logo";
 
@@ -17,9 +16,9 @@ const SECTION_LINKS: Array<[string, HomeSection]> = [
   ["Sale", "sale"],
 ];
 
-/** The page is scrolled this far before the bar shrinks. */
+/** The page is scrolled this far before the bar behind the header appears, and before it shrinks. */
+const BAR_AFTER = 24;
 const COMPACT_AFTER = 150;
-const GLASS_FADE_DISTANCE = 300;
 
 export function Header({
   role,
@@ -48,7 +47,10 @@ export function Header({
   const account = useRef<HTMLDivElement>(null);
   const [accountOpen, setAccountOpen] = useState(false);
   const customer = role === "Customer";
-  const variant = !customer ? "staff" : view === "home" ? "float" : "bar";
+  const variant = !customer ? "staff" : view === "home" ? "home" : "page";
+  // Pages with a narrower content column pull the header in to the same margins.
+  const column =
+    view === "cart" || view === "profile" ? " header--narrow" : view === "invoice" ? " header--invoice" : "";
   const checkoutStep = view === "checkout" ? 2 : view === "invoice" ? 3 : 0;
 
   useRafScroll(() => {
@@ -56,7 +58,7 @@ export function Header({
     if (!bar) return;
     const y = window.scrollY;
     bar.classList.toggle("header--compact", y > COMPACT_AFTER);
-    bar.style.setProperty("--nav-p", clamp(y / GLASS_FADE_DISTANCE, 0, 1).toFixed(3));
+    bar.classList.toggle("header--scrolled", y > BAR_AFTER);
   });
 
   useEffect(() => setAccountOpen(false), [view, user?.id]);
@@ -97,7 +99,7 @@ export function Header({
       ];
 
   return (
-    <header ref={header} className={`header header--${variant}`}>
+    <header ref={header} className={`header header--${variant}${customer ? column : ""}`}>
       <div className="header-bar">
         <button className="header-logo" aria-label="RALLY home" onClick={() => go(roleDefaults[role])}>
           <Logo />

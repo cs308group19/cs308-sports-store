@@ -234,54 +234,60 @@
   z-index: 30;
   color: #fff;
 }
-.header--bar {
-  background: rgba(2, 7, 10, 0.6);
-  border-bottom: 1px solid var(--panel-line);
-  backdrop-filter: blur(14px);
-}
 .header--staff {
   background: var(--ink);
-}
-.header--bar.header--compact {
-  background: rgba(2, 7, 10, 0.82);
 }
 .header-bar {
   display: flex;
   align-items: center;
   gap: 16px;
 }
-.header--bar .header-bar,
+.header--page .header-bar,
+.header--home .header-bar,
 .header--staff .header-bar {
   max-width: 1280px;
   margin: 0 auto;
   padding: 18px 32px;
   transition: padding var(--dur) var(--ease-out);
 }
-.header--bar.header--compact .header-bar,
+.header--page.header--compact .header-bar,
+.header--home.header--compact .header-bar,
 .header--staff.header--compact .header-bar {
   padding-block: 8px;
 }
-/* The home page: a floating glass pill that shrinks once the page scrolls. */
-.header--float {
-  height: 0;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
+/* Customer pages: the header sits on the page background, on the same margins as the content. */
+.header--home {
+  position: fixed;
+  right: 0;
+  left: 0;
 }
-.header--float .header-bar {
-  width: 1240px;
-  max-width: calc(100% - 24px);
-  margin-top: calc(18px - var(--nav-p, 0) * 8px);
-  padding: 10px 12px 10px 24px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--r-pill);
-  background: rgba(2, 7, 10, calc(0.15 + var(--nav-p, 0) * 0.6));
-  backdrop-filter: blur(18px);
-  transition: width 0.4s var(--ease-out), padding 0.4s var(--ease-out), margin 0.4s var(--ease-out);
+.header--home .header-bar {
+  max-width: 1360px;
+  padding-inline: 40px;
 }
-.header--float.header--compact .header-bar {
-  width: 760px;
-  padding: 6px 8px 6px 20px;
+.header--narrow .header-bar {
+  max-width: 1160px;
+}
+.header--invoice .header-bar {
+  max-width: 920px;
+}
+/* A full-width bar fades in behind it once the page scrolls. */
+.header--home::before,
+.header--page::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(2, 7, 10, 0.72);
+  backdrop-filter: blur(14px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur);
+}
+.header--home.header--scrolled::before,
+.header--page.header--scrolled::before {
+  opacity: 1;
 }
 .header-logo {
   flex: none;
@@ -394,7 +400,7 @@
   background: #fff;
   color: var(--ink);
 }
-.header--bar .cart-button {
+.header--page .cart-button {
   background: #111a22;
   color: #fff;
 }
@@ -496,6 +502,15 @@
   font-size: 12px;
   white-space: nowrap;
 }
+.header--home .header-nav,
+.header--page .header-nav {
+  padding: 0;
+  background: none;
+}
+.header--home .header-logo,
+.header--page .header-logo {
+  padding-inline: 0;
+}
 .menu-button,
 .mobile-menu {
   display: none;
@@ -513,16 +528,20 @@
   .menu-button {
     display: grid;
   }
-  .header--bar .header-bar,
   .header--staff .header-bar,
-  .header--bar.header--compact .header-bar,
   .header--staff.header--compact .header-bar {
     padding: 10px 16px;
   }
-  .header--float .header-bar,
-  .header--float.header--compact .header-bar {
-    width: calc(100% - 24px);
-    padding: 6px 8px 6px 16px;
+  .header--page .header-bar,
+  .header--page.header--compact .header-bar,
+  .header--home .header-bar,
+  .header--home.header--compact .header-bar {
+    padding-block: 10px;
+  }
+  /* The menu icon, not its 44px button, lines up with the content. */
+  .header--home .menu-button,
+  .header--page .menu-button {
+    margin-right: -11px;
   }
   .mobile-menu {
     position: absolute;
@@ -540,12 +559,20 @@
     background: rgba(12, 20, 27, 0.97);
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
   }
-  .header--float .mobile-menu {
-    top: 82px;
+}
+@media (max-width: 700px) {
+  .header--page .header-bar,
+  .header--page.header--compact .header-bar {
+    padding-inline: 16px;
+  }
+  .header--home .header-bar,
+  .header--home.header--compact .header-bar {
+    padding-inline: 20px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .header-bar {
+  .header-bar,
+  .header::before {
     transition: none !important;
   }
   .logo-ball {
@@ -3062,6 +3089,27 @@ footer {
 .glow-page > * {
   position: relative;
   z-index: 1;
+}
+/* The page, and so its top glow, continues behind the see-through header. */
+.header--page + .glow-page {
+  --header-h: 97px;
+  margin-top: calc(-1 * var(--header-h));
+  padding-top: var(--header-h);
+}
+.header--page + .glow-page::before {
+  top: calc(var(--header-h) - 240px);
+}
+/* The sign-in photo also reaches the top of the window, with no edge under the header. */
+.header--page + .glow-page .auth-art {
+  top: 0;
+  height: 100vh;
+  margin-top: calc(-1 * var(--header-h));
+  padding-top: calc(12% + var(--header-h));
+}
+@media (max-width: 1000px) {
+  .header--page + .glow-page {
+    --header-h: 81px;
+  }
 }
 .app--shop .page {
   max-width: 1280px;
