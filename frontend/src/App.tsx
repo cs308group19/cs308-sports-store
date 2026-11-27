@@ -3,11 +3,12 @@ import type { Role, Product, CartView } from "./types/models";
 import { ApiError } from "./lib/api";
 import { addCartItem, cartErrorMessage, fetchCart, mergeGuestCart, removeCartItem, setCartQuantity } from "./services/cartApi";
 import { type View, roleDefaults, roleNav, staffViews } from "./app/navigation";
+import { RallyAssistant } from "./components/assistant/RallyAssistant";
+import { firstName } from "./components/assistant/rallyChat";
 import { useAuth } from "./auth/AuthProvider";
 import type { SessionUser } from "./auth/types";
 import { Footer } from "./components/layout/Footer";
 import { Header, type HomeSection } from "./components/layout/Header";
-import { SupportChat } from "./components/layout/SupportChat";
 import { Button } from "./components/ui/Button";
 import { Skeleton } from "./components/ui/Skeleton";
 import { Toast, type ToastContent } from "./components/ui/Toast";
@@ -55,7 +56,6 @@ export default function App() {
   const [shopSearch, setShopSearch] = useState("");
   const [toast, setToast] = useState<ToastContent | null>(null);
   const toastTimer = useRef(0);
-  const [chatOpen, setChatOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   /** A home page section waiting to be scrolled to once the home page has its products. */
   const [homeSection, setHomeSection] = useState<HomeSection | null>(null);
@@ -386,7 +386,14 @@ export default function App() {
       {role === "Customer" && (
         <Footer navigate={navigate} openCategory={openCategory} goToSection={goToSection} signedIn={Boolean(user)} />
       )}
-      <SupportChat open={chatOpen} setOpen={setChatOpen} />
+      {/* Rally is for shoppers: staff pages and staff accounts have no chat bubble. */}
+      {role === "Customer" && !staffViews.has(view) && (
+        <RallyAssistant
+          userId={user?.id ?? null}
+          name={user ? firstName(user.name) : undefined}
+          openProduct={openProduct}
+        />
+      )}
       {toast && <Toast toast={toast} onViewCart={() => navigate("cart")} />}
     </div>
   );
