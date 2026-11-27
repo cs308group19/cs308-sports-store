@@ -4208,6 +4208,79 @@ footer {
   }
 }
 
+/* ---------- Tilt and scroll reveals ---------- */
+.tilt {
+  height: 100%;
+  perspective: 900px;
+}
+.tilt-inner {
+  position: relative;
+  height: 100%;
+  transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: transform var(--dur) var(--ease-out);
+}
+.tilt[data-tilting] .tilt-inner {
+  transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateZ(14px);
+  transition: transform 0.12s ease-out;
+}
+.tilt-glare {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  overflow: hidden;
+  border-radius: 26px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur);
+}
+.tilt-glare::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0) 32%);
+  transform: translate(calc(var(--gx, 0%) / 2), calc(var(--gy, 0%) / 2));
+}
+.tilt[data-tilting] .tilt-glare {
+  opacity: 1;
+}
+.category-tile:hover img,
+.category-tile:focus-visible img {
+  transform: scale(1.08) translate3d(0, -8px, 0);
+}
+/* Browsers with scroll-driven animations rise content as it enters; others show it as it is.
+   The home page does its own reveals (useReveal), so nothing here applies to it. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .product-grid > .product-tilt,
+    .page-heading,
+    .orders-heading,
+    .section-head,
+    .review-cards > article {
+      animation: rise linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 30%;
+    }
+  }
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tilt-inner {
+    transition: none;
+  }
+  .category-tile:hover img,
+  .category-tile:focus-visible img {
+    transform: none;
+  }
+}
+
 /* Print: the invoice alone on a clean page. */
 @media print {
   .header,
