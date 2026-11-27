@@ -64,8 +64,15 @@ describe('ProductDetailService', () => {
     product.findFirst.mockResolvedValue(dbRow);
     await service.findById(3n);
     const reviews = product.findFirst.mock.calls[0][0].select.reviews;
-    expect(reviews.where).toEqual({ commentStatus: 'approved' });
-    expect(reviews.orderBy).toEqual({ createdAt: 'desc' });
+    expect(reviews.where).toEqual({
+      commentStatus: 'approved',
+      comment: { not: null },
+    });
+    expect(reviews.orderBy).toEqual([
+      { moderatedAt: { sort: 'desc', nulls: 'last' } },
+      { createdAt: 'desc' },
+      { id: 'desc' },
+    ]);
     expect(reviews.take).toBe(DETAIL_COMMENT_LIMIT);
   });
 

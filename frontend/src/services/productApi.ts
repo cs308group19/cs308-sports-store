@@ -50,6 +50,7 @@ export function toProduct(response: ProductSummaryResponse): Product {
     id: response.id,
     name: response.name,
     category: response.category,
+    categorySlug: response.categorySlug,
     price: response.price,
     oldPrice: response.oldPrice,
     rating: response.rating,

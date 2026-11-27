@@ -73,7 +73,7 @@ export function Home({
   return (
     <div className="home">
       <RallyIntro drop={products[0]} openProduct={openProduct} />
-      {status === "failed" && (
+      {status === "failed" ? (
         <div className="empty" role="alert">
           <h2>Products could not be loaded</h2>
           <p>Please try again in a moment.</p>
@@ -86,11 +86,14 @@ export function Home({
             Try again
           </Button>
         </div>
+      ) : (
+        <>
+          <DropRing products={products} loading={loading} openProduct={openProduct} onShop={openShop} />
+          <BrandTiles products={products} loading={loading} openBrand={openBrand} openProduct={openProduct} />
+          <CategoryTiles categories={categories} products={products} loading={loading} openCategory={openCategory} />
+          <Trending products={products} loading={loading} openProduct={openProduct} addToCart={addToCart} />
+        </>
       )}
-      <DropRing products={products} loading={loading} openProduct={openProduct} onShop={openShop} />
-      <BrandTiles products={products} loading={loading} openBrand={openBrand} openProduct={openProduct} />
-      <CategoryTiles categories={categories} products={products} loading={loading} openCategory={openCategory} />
-      <Trending products={products} loading={loading} openProduct={openProduct} addToCart={addToCart} />
       <GearCards />
       <JournalSection openCategory={openCategory} />
       <section id="sale" className="sale-band">
@@ -100,7 +103,7 @@ export function Home({
           <br />
           <em>This week only.</em>
         </h2>
-        <button className="pill pill-white" onClick={() => scrollToSection("trending")}>
+        <button className="pill pill-white" onClick={openShop}>
           Explore the sale
         </button>
       </section>

@@ -4,7 +4,7 @@ import { toOrderHistoryItem } from './order-history.mapper.js';
 import type { OrderHistoryItem } from './order-history.types.js';
 
 /** Only what the order history page shows: the order, its lines and each product's photo. */
-const orderHistorySelect = {
+const orderHistorySelect = (userId: string) => ({
   id: true,
   orderNumber: true,
   status: true,
@@ -22,9 +22,18 @@ const orderHistorySelect = {
       unitPricePaid: true,
       lineTotal: true,
       product: { select: { imageUrl: true } },
+      deliveries: {
+        where: { status: 'delivered' as const },
+        select: { id: true },
+        take: 1,
+      },
+      review: {
+        where: { userId },
+        select: { rating: true, comment: true, commentStatus: true },
+      },
     },
   },
-};
+});
 
 /** SCRUM-27. The orders a customer has placed, newest first. */
 @Injectable()
@@ -36,7 +45,7 @@ export class OrderHistoryService {
     const rows = await this.prisma.order.findMany({
       where: { userId },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      select: orderHistorySelect,
+      select: orderHistorySelect(userId),
     });
     return rows.map(toOrderHistoryItem);
   }

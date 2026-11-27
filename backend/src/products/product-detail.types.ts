@@ -7,6 +7,7 @@ export interface ProductReviewResponse {
   comment: string;
   author: string;
   createdAt: string;
+  publishedAt: string;
 }
 
 /**
