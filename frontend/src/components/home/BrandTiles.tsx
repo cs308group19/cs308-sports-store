@@ -22,8 +22,8 @@ export function BrandTiles({
   if (!loading && brands.length === 0) return null;
 
   return (
-    <section id="brands" className="home-section brands">
-      <SectionTitle label="02 — THE BRANDS" title="All the names you know." reveal={reveal} />
+    <section id="brands" tabIndex={-1} className="home-section brands">
+      <SectionTitle title="All the names you know." reveal={reveal} />
       <div className="brand-grid">
         {loading && <SkeletonCards count={4} label="Loading brands" />}
         {brands.map((brand, index) => (

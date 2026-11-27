@@ -1,6 +1,14 @@
 import { type ReactNode } from "react";
 
-export function Icon({ name, size = 20 }: { name: string; size?: number }) {
+export function Icon({
+  name,
+  size = 20,
+  filled = false,
+}: {
+  name: string;
+  size?: number;
+  filled?: boolean;
+}) {
   const paths: Record<string, ReactNode> = {
     bag: (
       <>
@@ -85,7 +93,7 @@ export function Icon({ name, size = 20 }: { name: string; size?: number }) {
       width={size}
       height={size}
       viewBox="0 0 24 24"
-      fill="none"
+      fill={filled ? "currentColor" : "none"}
       stroke="currentColor"
       strokeWidth="1.8"
       strokeLinecap="round"

@@ -20,14 +20,14 @@ export function Trending({
   const reveal = useReveal();
 
   return (
-    <section id="trending" className="trending">
+    <section id="trending" tabIndex={-1} className="trending">
       <div className="home-section">
-        <SectionTitle label="04 — TRENDING" title="Everyone's wearing these." reveal={reveal} />
+        <SectionTitle title="Everyone's wearing these." reveal={reveal} />
       </div>
-      <div className="trending-row">
+      <div className="trending-row" ref={reveal}>
         {loading && <SkeletonCards count={5} label="Loading products" />}
-        {products.slice(0, SHOWN).map((product, index) => (
-          <div key={product.id} ref={reveal} style={{ "--delay": `${index * 70}ms` } as React.CSSProperties}>
+        {products.slice(0, SHOWN).map((product) => (
+          <div key={product.id}>
             <ProductCard product={product} openProduct={openProduct} addToCart={addToCart} compact />
           </div>
         ))}

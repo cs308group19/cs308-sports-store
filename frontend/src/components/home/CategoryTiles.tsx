@@ -18,8 +18,8 @@ export function CategoryTiles({
   const reveal = useReveal();
 
   return (
-    <section id="sports" className="home-section sports">
-      <SectionTitle label="03 — FIND YOUR SPORT" title="Pick your game." hot reveal={reveal} />
+    <section id="sports" tabIndex={-1} className="home-section sports">
+      <SectionTitle title="Pick your game." reveal={reveal} />
       <div className="category-grid">
         {loading && <SkeletonCards count={6} label="Loading categories" />}
         {categories.map((category, index) => (

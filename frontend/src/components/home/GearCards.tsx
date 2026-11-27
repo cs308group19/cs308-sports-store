@@ -16,7 +16,7 @@ export function GearCards() {
   return (
     <section className="home-section gear">
       <div className="gear-head">
-        <SectionTitle label="05 — KNOW YOUR GEAR" title="Tap a card." hot reveal={reveal} />
+        <SectionTitle title="Tap a card." reveal={reveal} />
         <p>Quick answers before you buy.</p>
       </div>
       <div className="gear-grid">

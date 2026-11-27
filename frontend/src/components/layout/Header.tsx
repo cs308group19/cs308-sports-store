@@ -3,13 +3,14 @@ import type { Role } from "../../types/models";
 import { type View, roleDefaults } from "../../app/navigation";
 import type { SessionUser } from "../../auth/types";
 import { useRafScroll } from "../../hooks/useRafScroll";
+import type { NavHomeSection } from "../../utils/activeHomeSection";
 import { Icon } from "../ui/Icon";
 import { Logo } from "../ui/Logo";
 
 /** Sections of the home page the header links to. */
 export type HomeSection = "drop" | "brands" | "sports" | "trending" | "journal" | "sale";
 
-const SECTION_LINKS: Array<[string, HomeSection]> = [
+const SECTION_LINKS: Array<[string, NavHomeSection]> = [
   ["Brands", "brands"],
   ["Sports", "sports"],
   ["Journal", "journal"],
@@ -26,6 +27,7 @@ export function Header({
   logout,
   nav,
   view,
+  activeSection = null,
   navigate,
   goToSection,
   cartCount,
@@ -37,6 +39,7 @@ export function Header({
   logout: () => void;
   nav: Array<[string, View]>;
   view: View;
+  activeSection?: NavHomeSection | null;
   navigate: (v: View) => void;
   goToSection: (section: HomeSection) => void;
   cartCount: number;
@@ -122,20 +125,34 @@ export function Header({
             {customer ? (
               <>
                 <button
-                  className={view === "home" || view === "shop" || view === "product" ? "active" : ""}
+                  className={view === "shop" || view === "product" ? "active" : ""}
+                  aria-current={view === "shop" || view === "product" ? "page" : undefined}
                   onClick={() => go("shop")}
                 >
                   Shop
                 </button>
-                {SECTION_LINKS.map(([label, id]) => (
-                  <button key={id} onClick={() => section(id)}>
-                    {label}
-                  </button>
-                ))}
+                {SECTION_LINKS.map(([label, id]) => {
+                  const active = view === "home" && activeSection === id;
+                  return (
+                    <button
+                      key={id}
+                      className={active ? "active" : ""}
+                      aria-current={active ? "true" : undefined}
+                      onClick={() => section(id)}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
               </>
             ) : (
               nav.map(([label, target]) => (
-                <button key={target} className={view === target ? "active" : ""} onClick={() => go(target)}>
+                <button
+                  key={target}
+                  className={view === target ? "active" : ""}
+                  aria-current={view === target ? "page" : undefined}
+                  onClick={() => go(target)}
+                >
                   {label}
                 </button>
               ))
@@ -218,20 +235,57 @@ export function Header({
 
       {mobileOpen && (
         <nav className="mobile-menu" aria-label="Menu">
-          {(customer ? ([["Home", "home"], ["Shop", "shop"]] as Array<[string, View]>) : nav).map(([label, target]) => (
-            <button key={target} className={view === target ? "active" : ""} onClick={() => go(target)}>
-              {label}
-            </button>
-          ))}
-          {customer &&
-            SECTION_LINKS.map(([label, id]) => (
-              <button key={id} onClick={() => section(id)}>
+          {customer ? (
+            <>
+              <button
+                className={view === "home" && !activeSection ? "active" : ""}
+                aria-current={view === "home" && !activeSection ? "page" : undefined}
+                onClick={() => go("home")}
+              >
+                Home
+              </button>
+              <button
+                className={view === "shop" || view === "product" ? "active" : ""}
+                aria-current={view === "shop" || view === "product" ? "page" : undefined}
+                onClick={() => go("shop")}
+              >
+                Shop
+              </button>
+            </>
+          ) : (
+            nav.map(([label, target]) => (
+              <button
+                key={target}
+                className={view === target ? "active" : ""}
+                aria-current={view === target ? "page" : undefined}
+                onClick={() => go(target)}
+              >
                 {label}
               </button>
-            ))}
+            ))
+          )}
+          {customer &&
+            SECTION_LINKS.map(([label, id]) => {
+              const active = view === "home" && activeSection === id;
+              return (
+                <button
+                  key={id}
+                  className={active ? "active" : ""}
+                  aria-current={active ? "true" : undefined}
+                  onClick={() => section(id)}
+                >
+                  {label}
+                </button>
+              );
+            })}
           {customer &&
             accountLinks.map(([label, target]) => (
-              <button key={target} className={view === target ? "active" : ""} onClick={() => go(target)}>
+              <button
+                key={target}
+                className={view === target ? "active" : ""}
+                aria-current={view === target ? "page" : undefined}
+                onClick={() => go(target)}
+              >
                 {label}
               </button>
             ))}

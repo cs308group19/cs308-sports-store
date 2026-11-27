@@ -6,8 +6,8 @@ export function JournalSection({ openCategory }: { openCategory: (slug: string) 
   const reveal = useReveal();
 
   return (
-    <section id="journal" className="home-section journal">
-      <SectionTitle label="06 — THE JOURNAL" title="Read before you run." reveal={reveal} />
+    <section id="journal" tabIndex={-1} className="home-section journal">
+      <SectionTitle title="Read before you run." reveal={reveal} />
       <div className="journal-grid">
         {journalPosts.map((post, index) => (
           <div key={post.title} ref={reveal} style={{ "--delay": `${index * 120}ms` } as React.CSSProperties}>
