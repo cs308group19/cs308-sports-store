@@ -4,17 +4,6 @@ export function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-/**
- * How far the page has scrolled through a pinned track: 0 when the track's top reaches the top of
- * the viewport, 1 when its bottom reaches the bottom of the viewport. `trackTop` is the value of
- * getBoundingClientRect().top.
- */
-export function scrollProgress(trackTop: number, trackHeight: number, viewportHeight: number): number {
-  const distance = trackHeight - viewportHeight;
-  if (distance <= 0) return trackTop <= 0 ? 1 : 0;
-  return clamp(-trackTop / distance, 0, 1);
-}
-
 /** The angle of one card on a ring of `count` cards, and how bright it is at this ring rotation. */
 export function ringCard(index: number, count: number, spin: number, minOpacity = 0.35) {
   const angle = (index * 360) / count;

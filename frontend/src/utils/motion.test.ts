@@ -4,34 +4,8 @@ import {
   clampZoom,
   ringCard,
   ringSpinFor,
-  scrollProgress,
   tiltAngles,
 } from "./motion";
-
-describe("scrollProgress", () => {
-  // A 2400px track in an 800px viewport can scroll 1600px while pinned.
-  it("is 0 when the track top reaches the top of the viewport", () => {
-    expect(scrollProgress(0, 2400, 800)).toBe(0);
-  });
-
-  it("is 0.5 half way through", () => {
-    expect(scrollProgress(-800, 2400, 800)).toBe(0.5);
-  });
-
-  it("is 1 when the track bottom reaches the bottom of the viewport", () => {
-    expect(scrollProgress(-1600, 2400, 800)).toBe(1);
-  });
-
-  it("stays at 0 before the track and at 1 after it", () => {
-    expect(scrollProgress(500, 2400, 800)).toBe(0);
-    expect(scrollProgress(-5000, 2400, 800)).toBe(1);
-  });
-
-  it("treats a track no taller than the viewport as done once it is passed", () => {
-    expect(scrollProgress(10, 600, 800)).toBe(0);
-    expect(scrollProgress(-10, 600, 800)).toBe(1);
-  });
-});
 
 describe("ringCard", () => {
   it("spaces six cards 60 degrees apart", () => {

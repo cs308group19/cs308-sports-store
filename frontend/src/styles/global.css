@@ -2038,12 +2038,9 @@ td {
   --ring-w: 190px;
   --ring-h: 270px;
   --ring-r: 320px;
-  height: 220vh;
   scroll-margin-top: 0;
 }
 .drop-stage {
-  position: sticky;
-  top: 0;
   height: 100vh;
   height: 100svh;
   min-height: 620px;
@@ -2091,13 +2088,16 @@ td {
   align-items: center;
   justify-content: center;
   perspective: 1400px;
+  /* Up and down swipes scroll the page; sideways ones turn the ring. */
+  touch-action: pan-y pinch-zoom;
+  user-select: none;
 }
 .ring {
   position: relative;
   width: var(--ring-w);
   height: var(--ring-h);
   transform-style: preserve-3d;
-  transform: rotateX(-10deg) rotateY(var(--spin, 0deg)) scale(var(--zoom, 1));
+  transform: rotateX(-10deg) rotateY(var(--spin, 0deg));
 }
 .ring-slot {
   position: absolute;
@@ -2152,30 +2152,23 @@ td {
 .ring-price {
   color: var(--blue-light);
 }
-/* Reduced motion: no pinning and no ring, just the six cards in a grid. */
-.drop--static {
-  height: auto;
+/* Narrower desktops: a smaller ring that leaves the right edge to the Rally bubble. */
+@media (min-width: 1060.02px) and (max-width: 1439.98px) {
+  .drop-inner {
+    padding-right: 106px;
+  }
+  .drop-copy {
+    flex-basis: 360px;
+  }
+  .ring-viewport {
+    flex-basis: 480px;
+    scale: 0.82;
+  }
 }
-.drop--static .drop-stage {
-  position: static;
-  height: auto;
-  min-height: 0;
-}
-.drop--static .ring-viewport {
-  height: auto;
-  perspective: none;
-}
-.drop--static .ring {
-  width: 100%;
-  height: auto;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-  transform: none;
-}
-.drop--static .ring-slot {
-  position: static;
-  transform: none;
+@media (min-width: 1060.02px) and (max-width: 1199.98px) {
+  .ring-viewport {
+    scale: 0.72;
+  }
 }
 
 /* ---------- Home: sections ---------- */
@@ -2756,7 +2749,6 @@ footer {
     --ring-w: 128px;
     --ring-h: 198px;
     --ring-r: 150px;
-    height: 200vh;
   }
   .drop-inner {
     padding: 72px 20px 12px;
@@ -2789,9 +2781,6 @@ footer {
   }
   .ring-line b:first-child {
     -webkit-line-clamp: 2;
-  }
-  .drop--static .ring {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .home-section {
     padding: 56px 18px;
