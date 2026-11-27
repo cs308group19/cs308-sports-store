@@ -3930,10 +3930,11 @@ footer {
   align-self: flex-start;
 }
 .tracker {
+  position: relative;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
-.tracker div {
+.tracker li {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -3941,24 +3942,32 @@ footer {
   gap: 10px;
   color: var(--muted);
   font-size: 14px;
+  text-align: center;
 }
-.tracker div::before {
-  content: "";
+/* The bar runs from the middle of the first step to the middle of the last. */
+.tracker .tracker-bar {
   position: absolute;
   top: 15px;
-  right: 50%;
-  left: -50%;
+  right: calc(100% / 6);
+  left: calc(100% / 6);
   height: 4px;
+  display: block;
+  border-radius: 4px;
   background: rgba(255, 255, 255, 0.12);
 }
-.tracker div:first-child::before {
-  display: none;
-}
-.tracker div.done::before {
+.tracker .tracker-bar > span {
+  width: auto;
+  height: 100%;
+  display: block;
+  border: 0;
+  border-radius: 4px;
   background: var(--accent);
+  transform: scaleX(var(--filled));
+  transform-origin: left;
+  animation: fillbar 1.1s var(--ease-out) both;
 }
-.tracker div > span {
-  z-index: 1;
+.tracker li > span {
+  position: relative;
   width: 34px;
   height: 34px;
   display: grid;
@@ -3968,13 +3977,58 @@ footer {
   background: var(--panel);
   font-weight: 700;
 }
-.tracker div.done {
+.tracker li.done,
+.tracker li.current {
   color: #fff;
 }
-.tracker div.done > span {
+.tracker li.done > span {
+  border-color: #0b3a6b;
+  background: #0b3a6b;
+}
+.tracker li.current > span {
   border-color: var(--accent);
   background: var(--accent);
-  color: #fff;
+}
+.tracker li.current > span::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  background: var(--accent);
+  z-index: -1;
+  animation: pulse 1.6s ease-out infinite;
+}
+.tracker--delivered .tracker-bar span {
+  background: var(--green);
+}
+.tracker--delivered li.done > span {
+  border-color: var(--green);
+  background: var(--green);
+}
+@keyframes fillbar {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes pulse {
+  from {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  70%,
+  to {
+    opacity: 0;
+    transform: scale(1.85);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tracker .tracker-bar > span,
+  .tracker li.current > span::after {
+    animation: none;
+  }
+  .tracker li.current > span::after {
+    opacity: 0;
+  }
 }
 
 /* Profile */
@@ -4207,7 +4261,7 @@ footer {
   .order-product-line {
     width: 100%;
   }
-  .tracker {
+  .tracker li {
     font-size: 12px;
   }
 }
