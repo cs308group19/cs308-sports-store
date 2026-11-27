@@ -24,12 +24,15 @@ export function Shop({
   openProduct,
   addToCart,
   initialCategory = "",
+  initialSearch = "",
   refreshKey = 0,
 }: {
   openProduct: (p: Product) => void;
   addToCart: (p: Product) => void;
   /** Category slug to open the shop on (from the home page). Empty means all categories. */
   initialCategory?: string;
+  /** Words already in the search box, for example a brand picked on the home page. */
+  initialSearch?: string;
   refreshKey?: number;
 }) {
   const [categories, setCategories] = useState<CategorySummary[]>([]);
@@ -37,11 +40,15 @@ export function Shop({
   const [products, setProducts] = useState<Product[]>([]);
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [reloadKey, setReloadKey] = useState(0);
-  const [query, setQuery] = useState("");
-  const [search, setSearch] = useState("");
+  const [query, setQuery] = useState(initialSearch);
+  const [search, setSearch] = useState(initialSearch);
   const [sort, setSort] = useState<ProductSort>("popularity");
 
   useEffect(() => setCategory(initialCategory), [initialCategory]);
+  useEffect(() => {
+    setQuery(initialSearch);
+    setSearch(initialSearch);
+  }, [initialSearch]);
 
   // Search once the customer stops typing. Clearing the box shows every product right away.
   useEffect(() => {

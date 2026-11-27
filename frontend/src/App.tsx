@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Role, Product, CartView } from "./types/models";
 import { ApiError } from "./lib/api";
 import { addCartItem, cartErrorMessage, fetchCart, mergeGuestCart, removeCartItem, setCartQuantity } from "./services/cartApi";
@@ -10,7 +10,7 @@ import { Footer } from "./components/layout/Footer";
 import { Header, type HomeSection } from "./components/layout/Header";
 import { SupportChat } from "./components/layout/SupportChat";
 import { Button } from "./components/ui/Button";
-import { Icon } from "./components/ui/Icon";
+import { Toast, type ToastContent } from "./components/ui/Toast";
 import { AuthPage } from "./pages/auth/AuthPage";
 import { Cart } from "./pages/customer/Cart";
 import { Checkout } from "./pages/customer/Checkout";
@@ -51,7 +51,9 @@ export default function App() {
   const [catalogueVersion, setCatalogueVersion] = useState(0);
   const [wishlist, setWishlist] = useState<Product[]>([products[0], products[4]]);
   const [shopCategory, setShopCategory] = useState("");
-  const [toast, setToast] = useState("");
+  const [shopSearch, setShopSearch] = useState("");
+  const [toast, setToast] = useState<ToastContent | null>(null);
+  const toastTimer = useRef(0);
   const [chatOpen, setChatOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   /** A home page section waiting to be scrolled to once the home page has its products. */
@@ -85,7 +87,7 @@ export default function App() {
     setCheckoutInvoice((invoice) => invoice?.customerId === user?.id ? invoice : null);
   }, [user?.id]);
 
-  const navigate = (next: View, invoice: CheckoutInvoice | null = null) => {
+  const navigate = (next: View, invoice: CheckoutInvoice | null = null, smooth = true) => {
     setCheckoutInvoice(invoice);
     setHomeSection(null);
     // SCRUM-22/27/43. Guests log in before opening checkout, order history or their profile.
@@ -110,11 +112,14 @@ export default function App() {
       setAuthOrigin(origin);
       setReturnTo(origin);
     }
-    if (next === "shop") setShopCategory("");
+    if (next === "shop") {
+      setShopCategory("");
+      setShopSearch("");
+    }
     setView(next);
     window.history.pushState({}, "", next === "login" ? "/auth" : "/");
     setMobileOpen(false);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior: smooth ? "smooth" : "instant" });
   };
 
   /** Scrolls to a section of the home page, opening the home page first when needed. */
@@ -123,7 +128,7 @@ export default function App() {
       scrollToSection(section);
       return;
     }
-    navigate("home");
+    navigate("home", null, false);
     setHomeSection(section);
   };
 
@@ -141,10 +146,13 @@ export default function App() {
     notify("You have been logged out");
   };
 
-  const notify = (message: string) => {
-    setToast(message);
-    window.setTimeout(() => setToast(""), 2200);
+  const showToast = (content: ToastContent, duration = 2500) => {
+    window.clearTimeout(toastTimer.current);
+    setToast(content);
+    toastTimer.current = window.setTimeout(() => setToast(null), duration);
   };
+
+  const notify = (message: string) => showToast({ message });
 
   // Load the cart on page load and after login. A guest cart is merged into the customer cart first.
   useEffect(() => {
@@ -173,7 +181,7 @@ export default function App() {
   const addToCart = async (product: Product) => {
     try {
       setCart(await addCartItem(product.id, Boolean(user)));
-      notify(`${product.name} added to cart`);
+      showToast({ added: product });
     } catch (error) {
       if (error instanceof ApiError && (error.status === 400 || error.status === 409)) {
         // SCRUM-15. Stock may have changed in another session; refresh visible catalogue data.
@@ -205,6 +213,14 @@ export default function App() {
     setShopCategory(slug);
   };
 
+  /** Opens the shop searched for one brand; the API has no brand filter. */
+  const openBrand = (brand: string) => {
+    navigate("shop");
+    setShopSearch(brand);
+  };
+
+  const sectionShown = useCallback(() => setHomeSection(null), []);
+
   const openProduct = (product: Product) => {
     setSelected(product);
     navigate("product");
@@ -214,10 +230,13 @@ export default function App() {
     if (view === "home")
       return (
         <Home
-          navigate={navigate}
+          openShop={() => navigate("shop")}
           openCategory={openCategory}
+          openBrand={openBrand}
           openProduct={openProduct}
           addToCart={addToCart}
+          section={homeSection}
+          onSectionShown={sectionShown}
           refreshKey={catalogueVersion}
         />
       );
@@ -227,6 +246,7 @@ export default function App() {
           openProduct={openProduct}
           addToCart={addToCart}
           initialCategory={shopCategory}
+          initialSearch={shopSearch}
           refreshKey={catalogueVersion}
         />
       );
@@ -341,16 +361,11 @@ export default function App() {
         setMobileOpen={setMobileOpen}
       />
       <main>{screen}</main>
-      {role === "Customer" && <Footer navigate={navigate} />}
-      <SupportChat open={chatOpen} setOpen={setChatOpen} />
-      {toast && (
-        <div className="toast">
-          <span className="toast-check">
-            <Icon name="check" size={15} />
-          </span>
-          {toast}
-        </div>
+      {role === "Customer" && (
+        <Footer navigate={navigate} openCategory={openCategory} goToSection={goToSection} signedIn={Boolean(user)} />
       )}
+      <SupportChat open={chatOpen} setOpen={setChatOpen} />
+      {toast && <Toast toast={toast} onViewCart={() => navigate("cart")} />}
     </div>
   );
 }
