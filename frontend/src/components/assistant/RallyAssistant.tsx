@@ -43,6 +43,7 @@ export function RallyAssistant({
   const [chat, setChat] = useState(() => chatFor(loadChat(storage), userId));
   const [draft, setDraft] = useState("");
   const [waiting, setWaiting] = useState(false);
+  const [offline, setOffline] = useState(false);
   const phone = useMediaQuery(PHONE);
   const reducedMotion = useMediaQuery(REDUCED_MOTION);
   const panel = useRef<HTMLDivElement>(null);
@@ -62,7 +63,10 @@ export function RallyAssistant({
 
   useEffect(() => {
     // Signing out or switching accounts drops the answer on its way and starts a new chat.
-    if (owner.current !== null && owner.current !== userId) forgetPending();
+    if (owner.current !== null && owner.current !== userId) {
+      forgetPending();
+      setOffline(false);
+    }
     owner.current = userId;
     setChat((current) => chatFor(current, userId));
   }, [userId]);
@@ -140,6 +144,7 @@ export function RallyAssistant({
     try {
       const answer = await sendChat(toHistory(asked.entries), { signal: controller.signal });
       if (controller.signal.aborted) return;
+      setOffline(false);
       setChat((current) => ({
         ...addEntry(current, {
           role: "assistant",
@@ -154,6 +159,7 @@ export function RallyAssistant({
         failure.contact ??
         (failure.kind === "offline" ? await currentContact() : (chat.contact ?? DEFAULT_CONTACT));
       if (controller.signal.aborted) return;
+      setOffline(failure.kind === "offline");
       setChat((current) => ({
         ...addEntry(current, {
           role: "assistant",
@@ -178,6 +184,7 @@ export function RallyAssistant({
 
   const newChat = () => {
     forgetPending();
+    setOffline(false);
     setChat((current) => ({ ...emptyChat(userId), contact: current.contact }));
     setDraft("");
     input.current?.focus({ preventScroll: true });
@@ -209,7 +216,9 @@ export function RallyAssistant({
             <HeaderMark />
             <div className="rally-title">
               <span>RALLY</span>
-              <small>● online · replies instantly</small>
+              <small className={offline ? "is-offline" : undefined}>
+                {offline ? "● offline · team available" : "● online · replies instantly"}
+              </small>
             </div>
             <button type="button" className="rally-human" onClick={() => void talkToPerson()}>
               Talk to a person

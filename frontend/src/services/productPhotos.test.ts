@@ -8,6 +8,12 @@ describe("cartLineImage", () => {
     );
   });
 
+  it("uses the catalogue photo of the model even before the shop has been loaded", () => {
+    expect(cartLineImage({ productId: "42", imageUrl: null, model: "NK-AF1-WHT" })).toContain(
+      "NK-AF1-WHT",
+    );
+  });
+
   it("uses the photo the shop already showed for that product", () => {
     rememberPhoto(7, "/assets/dunk.webp");
     expect(cartLineImage({ productId: "7", imageUrl: null })).toBe("/assets/dunk.webp");

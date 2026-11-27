@@ -211,6 +211,7 @@ describe('Cart (e2e)', () => {
           {
             productId: '1',
             name: 'AeroStride Pro',
+            model: 'AS-PRO-25',
             price: 127.2,
             imageUrl: null,
             stock: 5,

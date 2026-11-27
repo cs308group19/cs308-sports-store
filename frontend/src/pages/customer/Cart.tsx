@@ -29,6 +29,7 @@ export function Cart({
         name: line.name,
         price: line.price,
         image: cartLineImage(line),
+        model: line.model,
       }),
     );
   return (

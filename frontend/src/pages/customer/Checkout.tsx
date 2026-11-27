@@ -128,7 +128,7 @@ export function Checkout({
             Name on card
             <input
               name="cardholderName"
-              autoComplete="cc-name"
+              autoComplete="off"
               required
               maxLength={120}
               value={card.name}
@@ -143,7 +143,7 @@ export function Checkout({
             <input
               name="cardNumber"
               inputMode="numeric"
-              autoComplete="cc-number"
+              autoComplete="off"
               required
               placeholder="4242 4242 4242 4242"
               value={card.number}
@@ -156,7 +156,7 @@ export function Checkout({
               <input
                 name="expiry"
                 inputMode="numeric"
-                autoComplete="cc-exp"
+                autoComplete="off"
                 required
                 placeholder="MM/YY"
                 value={card.expiry}
@@ -169,7 +169,7 @@ export function Checkout({
                 name="cvv"
                 type="password"
                 inputMode="numeric"
-                autoComplete="cc-csc"
+                autoComplete="off"
                 required
                 maxLength={4}
                 placeholder="123"

@@ -17,6 +17,7 @@ import { InvoicesModule } from './invoices/invoices.module.js';
 import { OrderHistoryModule } from './orders/order-history.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { ProductDetailModule } from './products/product-detail.module.js';
+import { ReviewsModule } from './reviews/reviews.module.js';
 import { StaffController } from './staff/staff.controller.js';
 import { SupabaseModule } from './supabase/supabase.module.js';
 import { UsersModule } from './users/users.module.js';
@@ -36,6 +37,7 @@ import { UsersModule } from './users/users.module.js';
     CheckoutModule,
     DeliveriesModule,
     OrderHistoryModule,
+    ReviewsModule,
     AssistantModule,
   ],
   controllers: [HealthController, StaffController],

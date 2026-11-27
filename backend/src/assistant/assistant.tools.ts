@@ -89,6 +89,15 @@ function text(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+function finiteNumber(value: unknown): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
 function toAssistantProduct(product: ProductSummaryResponse): AssistantProduct {
   return {
     id: product.id,
@@ -182,8 +191,8 @@ export class AssistantTools {
         `${product.name.toLowerCase()} `.startsWith(`${brand} `),
       );
     }
-    const maxPrice = Number(args.maxPrice);
-    if (args.maxPrice !== undefined && Number.isFinite(maxPrice)) {
+    const maxPrice = finiteNumber(args.maxPrice);
+    if (maxPrice !== null) {
       products = products.filter((product) => product.price <= maxPrice);
     }
     const { matches, allWords } = bestMatches(

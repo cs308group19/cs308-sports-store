@@ -59,6 +59,8 @@ export const orderRow = (id: number, userId: string, productName: string) => ({
       unitPricePaid: '90.00',
       lineTotal: '90.00',
       product: { imageUrl: null },
+      deliveries: [],
+      review: null,
     },
   ],
 });

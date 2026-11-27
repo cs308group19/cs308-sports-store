@@ -13,7 +13,7 @@ import {
 } from "../../services/orderApi";
 import { formatInvoiceDate } from "../../utils/invoiceFormat";
 import { productStub } from "../../utils/productStub";
-import type { OrderHistoryItem } from "../../types/orderHistory";
+import type { OrderHistoryItem, OrderHistoryLine } from "../../types/orderHistory";
 import type { Product } from "../../types/models";
 
 /** SCRUM-27. The customer's orders, newest first, each with its status, products and invoice. */
@@ -21,10 +21,12 @@ export function Orders({
   onOpenInvoice,
   onShop,
   openProduct,
+  onReview,
 }: {
   onOpenInvoice: (invoiceId: string) => void;
   onShop: () => void;
   openProduct: (p: Product) => void;
+  onReview: (line: OrderHistoryLine) => void;
 }) {
   const [orders, setOrders] = useState<OrderHistoryItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -94,30 +96,48 @@ export function Orders({
 
               <div className="order-products">
                 {order.items.map((line) => (
-                  <button
-                    className="order-product-line"
-                    key={line.id}
-                    onClick={() =>
-                      openProduct(
-                        productStub({
-                          id: line.productId,
-                          name: line.name,
-                          price: line.unitPricePaid,
-                          image: orderLineImage(line),
-                          model: line.model,
-                        }),
-                      )
-                    }
-                  >
-                    <img src={orderLineImage(line)} alt="" width="56" height="56" loading="lazy" />
-                    <span>
-                      <b>{line.name}</b>
-                      <small>
-                        Qty {line.quantity} · Paid {money(line.unitPricePaid)} each ·{" "}
-                        {money(line.lineTotal)}
-                      </small>
-                    </span>
-                  </button>
+                  <div className="order-product-line" key={line.id}>
+                    <button
+                      type="button"
+                      className="order-product-open"
+                      onClick={() =>
+                        openProduct(
+                          productStub({
+                            id: line.productId,
+                            name: line.name,
+                            price: line.unitPricePaid,
+                            image: orderLineImage(line),
+                            model: line.model,
+                          }),
+                        )
+                      }
+                    >
+                      <img src={orderLineImage(line)} alt="" width="56" height="56" loading="lazy" />
+                      <span>
+                        <b>{line.name}</b>
+                        <small>
+                          Qty {line.quantity} · Paid {money(line.unitPricePaid)} each ·{" "}
+                          {money(line.lineTotal)}
+                        </small>
+                        {line.review && (
+                          <small>
+                            Your rating: {line.review.rating}/5
+                            {line.review.commentStatus && ` · Comment ${line.review.commentStatus}`}
+                          </small>
+                        )}
+                      </span>
+                    </button>
+                    {line.delivered && !(line.review?.hasComment ?? Boolean(line.review?.commentStatus)) && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        aria-label={line.review ? `Add a comment for ${line.name}` : `Write a review for ${line.name}`}
+                        onClick={() => onReview(line)}
+                      >
+                        {line.review ? "Add a comment" : "Write a review"}
+                      </Button>
+                    )}
+                  </div>
                 ))}
               </div>
 

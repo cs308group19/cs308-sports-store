@@ -7,6 +7,7 @@ const TOKEN = '3f2b8c1e-5d4a-4f6b-9a7c-1e2d3c4b5a69';
 const productRow = (overrides: Record<string, unknown> = {}) => ({
   id: 3n,
   name: 'Court Vision Elite',
+  model: 'CV-ELT-25',
   price: '145.00',
   discountRate: '20.00',
   imageUrl: 'court.webp',
@@ -82,6 +83,7 @@ describe('CartViewService', () => {
         {
           productId: '3',
           name: 'Court Vision Elite',
+          model: 'CV-ELT-25',
           price: 116,
           imageUrl: 'court.webp',
           stock: 8,

@@ -47,6 +47,7 @@ export interface ProductReviewRow {
   comment: string | null;
   commentStatus: ReviewStatus;
   createdAt: Date;
+  moderatedAt: Date | null;
   user: { fullName: string };
 }
 
@@ -71,11 +72,14 @@ export function toReviewResponse(row: ProductReviewRow): ProductReviewResponse {
     comment: row.comment ?? '',
     author: shortAuthorName(row.user.fullName),
     createdAt: row.createdAt.toISOString(),
+    publishedAt: (row.moderatedAt ?? row.createdAt).toISOString(),
   };
 }
 
 /** One product card in the shop list (SCRUM-13) and the top half of the detail page (SCRUM-14). */
-export function toProductSummary(row: ProductSummaryRow): ProductSummaryResponse {
+export function toProductSummary(
+  row: ProductSummaryRow,
+): ProductSummaryResponse {
   const listPrice = toNumber(row.price);
   const discountRate = toNumber(row.discountRate);
   const price = applyDiscount(listPrice, discountRate);

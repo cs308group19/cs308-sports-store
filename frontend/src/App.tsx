@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { OrderHistoryLine } from "./types/orderHistory";
 import type { Role, Product, CartView } from "./types/models";
 import { ApiError } from "./lib/api";
 import { addCartItem, cartErrorMessage, fetchCart, mergeGuestCart, removeCartItem, setCartQuantity } from "./services/cartApi";
@@ -49,6 +50,7 @@ export default function App() {
   const [cart, setCart] = useState<CartView>({ items: [], total: 0 });
   const [cartLoad, setCartLoad] = useState<{ userId: string; status: "ready" | "failed" } | null>(null);
   const [cartRetry, setCartRetry] = useState(0);
+  const [reviewTarget, setReviewTarget] = useState<{ customerId: string; line: OrderHistoryLine } | null>(null);
   const [checkoutInvoice, setCheckoutInvoice] = useState<CheckoutInvoice | null>(null);
   const [catalogueVersion, setCatalogueVersion] = useState(0);
   const [wishlist, setWishlist] = useState<Product[]>([]);
@@ -63,6 +65,7 @@ export default function App() {
   useEffect(() => {
     const onPopState = () => {
       setCheckoutInvoice(null);
+      setReviewTarget(null);
       setView(window.location.pathname === "/auth" ? "login" : "home");
     };
     window.addEventListener("popstate", onPopState);
@@ -80,17 +83,19 @@ export default function App() {
   // If the session ends while a staff page, orders or the profile is open (expired or revoked),
   // leave that page.
   useEffect(() => {
-    if (!loading && !user && (staffViews.has(view) || view === "orders" || view === "profile"))
+    if (!loading && !user && (staffViews.has(view) || view === "orders" || view === "profile" || view === "review"))
       setView("home");
   }, [loading, user, view]);
 
   useEffect(() => {
     setCheckoutInvoice((invoice) => invoice?.customerId === user?.id ? invoice : null);
+    setReviewTarget((target) => target?.customerId === user?.id ? target : null);
   }, [user?.id]);
 
   const navigate = (next: View, invoice: CheckoutInvoice | null = null, smooth = true) => {
     setCheckoutInvoice(invoice);
     setHomeSection(null);
+    if (next !== "review") setReviewTarget(null);
     // SCRUM-22/27/43. Guests log in before opening checkout, order history or their profile.
     if ((next === "checkout" || next === "orders" || next === "profile") && !user) {
       setAuthOrigin(view);
@@ -144,6 +149,7 @@ export default function App() {
   const logout = async () => {
     setMobileOpen(false);
     await signOut();
+    setReviewTarget(null);
     setView("home");
     window.history.pushState({}, "", "/");
     notify("You have been logged out");
@@ -335,14 +341,23 @@ export default function App() {
     }
     // Keyed by the account, so signing in as someone else always loads their own orders.
     if (view === "orders")
-      return user ? (
+      return user?.role === "Customer" ? (
         <Orders
           key={user.id}
           onOpenInvoice={(invoiceId) => navigate("invoice", { id: invoiceId, customerId: user.id })}
           onShop={() => navigate("shop")}
           openProduct={openProduct}
+          onReview={(line) => {
+            setReviewTarget({ customerId: user.id, line });
+            navigate("review");
+          }}
         />
-      ) : null;
+      ) : (
+        <div className="page narrow">
+          <h1>My orders</h1>
+          <p>Order history is available to customer accounts.</p>
+        </div>
+      );
     if (view === "wishlist")
       return (
         <Wishlist
@@ -353,11 +368,31 @@ export default function App() {
         />
       );
     if (view === "profile") return user ? <Profile user={user} navigate={navigate} /> : null;
-    if (view === "review") return <ReviewForm notify={notify} navigate={navigate} />;
+    if (view === "review" && user?.role === "Customer" && reviewTarget?.customerId === user.id)
+      return <ReviewForm key={reviewTarget.line.id} line={reviewTarget.line} notify={notify} backToOrders={() => navigate("orders")} />;
+    if (view === "review")
+      return (
+        <div className="page narrow">
+          <h1>Product review</h1>
+          {user?.role === "Customer" ? (
+            <>
+              <p>Choose a delivered item from your orders to write a review.</p>
+              <Button onClick={() => navigate("orders")}>My orders</Button>
+            </>
+          ) : (
+            <p>Product reviews are available to customer accounts.</p>
+          )}
+        </div>
+      );
     if (view === "pm-products") return <ProductManagement notify={notify} />;
     if (view === "pm-deliveries") return <Deliveries notify={notify} />;
     if (view === "pm-invoices") return <Invoices notify={notify} manager="product" />;
-    if (view === "pm-reviews") return <ReviewQueue notify={notify} />;
+    if (view === "pm-reviews")
+      return user?.role === "Product Manager" ? (
+        <ReviewQueue key={user.id} notify={notify} />
+      ) : (
+        <p className="page">The review queue is available to product managers.</p>
+      );
     if (view === "sales-pricing") return <Pricing notify={notify} />;
     if (view === "sales-invoices") return <Invoices notify={notify} />;
     if (view === "sales-analytics") return <Analytics />;

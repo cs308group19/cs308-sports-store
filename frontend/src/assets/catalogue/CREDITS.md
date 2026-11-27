@@ -53,7 +53,6 @@ that link has no name or only a generic one, the name describes what the photo s
 
 | File | Shows | Photographer | Source page | Licence |
 |---|---|---|---|---|
-| `hero-main.webp` | Basketball lay-up in silhouette at sunset | Tan kuen yuen | https://unsplash.com/photos/silhouette-of-boy-jumping-shooting-ball-cXXuAUCTihQ | Unsplash License |
 | `category-running.webp` | Runner on the road | sporlab | https://unsplash.com/photos/pair-of-blue-and-white-adidas-running-shoes-XiZ7pRvCzro | Unsplash License |
 | `category-basketball.webp` | Lay-up in an indoor hall | Omar Abozeid | https://unsplash.com/photos/a-person-jumping-in-the-air-with-a-basketball-d0LAEe0nXeg | Unsplash License |
 | `category-football.webp` | Boot striking a football | Alfonso Scarpa | https://unsplash.com/photos/a-person-kicking-a-soccer-ball-on-a-field-wcNU1-OY-BA | Unsplash License |
