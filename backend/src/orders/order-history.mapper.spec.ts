@@ -108,6 +108,25 @@ describe('toOrderHistoryItem', () => {
     );
   });
 
+  it('shows a rating without publishing an inapplicable comment status', () => {
+    const line = record().items[0];
+    const item = toOrderHistoryItem(
+      record({
+        items: [
+          {
+            ...line,
+            review: {
+              rating: 4,
+              comment: 'Legacy text',
+              commentStatus: 'not_applicable',
+            },
+          },
+        ],
+      }),
+    );
+    expect(item.items[0].review).toEqual({ rating: 4, commentStatus: null });
+  });
+
   it('sends large BIGINT ids as strings so no digits are lost', () => {
     const id = 9007199254740993n;
     expect(toOrderHistoryItem(record({ id })).id).toBe('9007199254740993');

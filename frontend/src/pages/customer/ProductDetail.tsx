@@ -188,7 +188,7 @@ function ReviewList({ state }: { state: LoadState }) {
           <Stars rating={review.rating} />
           <p>“{review.comment}”</p>
           <b>{review.author}</b>
-          <small>Verified buyer · {new Date(review.createdAt).toLocaleDateString("en-US")}</small>
+          <small>Verified buyer · {new Date(review.publishedAt ?? review.createdAt).toLocaleDateString("en-US")}</small>
         </article>
       ))}
     </div>

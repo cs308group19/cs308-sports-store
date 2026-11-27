@@ -61,7 +61,7 @@ export class ReviewsService {
             existing.rating !== rating
           ) {
             throw new ConflictException(
-              'You have already rated this order item.',
+              'You have already reviewed this order item.',
             );
           }
           // A customer who originally chose a rating only can add one comment later.
@@ -103,20 +103,27 @@ export class ReviewsService {
         });
         return created;
       },
-      { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+        maxWait: 10_000,
+        timeout: 15_000,
+      },
     );
 
     return {
       id: catalogueId(review.id),
       rating: review.rating,
-      commentStatus: review.comment === null ? null : review.commentStatus,
+      commentStatus:
+        review.comment === null || review.commentStatus === 'not_applicable'
+          ? null
+          : review.commentStatus,
     };
   }
 
   async listPending() {
     const rows = await this.prisma.review.findMany({
       where: { commentStatus: 'pending', comment: { not: null } },
-      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      orderBy: [{ updatedAt: 'asc' }, { id: 'asc' }],
       select: {
         id: true,
         rating: true,

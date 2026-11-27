@@ -1449,6 +1449,10 @@ void test('reviews use the purchased line and its delivery; ratings publish befo
     (row) => String(row.productId) === product,
   );
   const orderItemId = String(delivery.orderItemId);
+  const undeliveredItemId = String(
+    purchase.deliveries.find((row) => String(row.productId) === otherProduct)
+      .orderItemId,
+  );
   const detail = async () =>
     (await server().get(`/api/products/${product}`).expect(200)).body;
 
@@ -1460,12 +1464,39 @@ void test('reviews use the purchased line and its delivery; ratings publish befo
   await submitReview(buyer, orderItemId, 4).expect(409);
   await deliverReviewItem(managerAuth, delivery.id);
 
+  // An inconsistent link inserted outside the app must never appear as the buyer's review.
+  const mislinked = await prisma.review.create({
+    data: {
+      orderItemId: BigInt(orderItemId),
+      productId: BigInt(product),
+      userId: stranger.id,
+      rating: 1,
+    },
+  });
   const [history] = await orderHistory(buyer);
   assert.equal(history.status, 'processing');
-  assert.deepEqual(history.items.map((line) => line.delivered).sort(), [
+  const deliveredLine = history.items.find(
+    (line) => String(line.id) === orderItemId,
+  );
+  assert.equal(deliveredLine.delivered, true);
+  assert.equal(deliveredLine.review, null);
+  await prisma.review.delete({ where: { id: mislinked.id } });
+  assert.equal(
+    history.items.find((line) => String(line.id) === undeliveredItemId)
+      .delivered,
     false,
-    true,
-  ]);
+  );
+  await submitReview(buyer, undeliveredItemId, 4, 'Too early.').expect(409);
+  assert.equal(
+    await prisma.review.count({
+      where: { orderItemId: BigInt(undeliveredItemId) },
+    }),
+    0,
+  );
+  const undeliveredProduct = await server()
+    .get(`/api/products/${otherProduct}`)
+    .expect(200);
+  assert.equal(undeliveredProduct.body.reviews, 0);
   await submitReview(buyer, orderItemId, 6).expect(400);
   await submitReview(buyer, '9223372036854775808', 4).expect(400);
   await submitReview(buyer, orderItemId, 4, '   ').expect(400);
@@ -1597,4 +1628,61 @@ void test('repeated purchases can receive separate ratings and concurrent writes
   assert.deepEqual(afterRejection.comments, []);
   assert.equal(afterRejection.rating, detail.rating);
   assert.equal(afterRejection.reviews, 2);
+});
+
+void test('a deferred comment appears among recent comments as soon as it is approved', async () => {
+  const buyer = await checkoutCustomer();
+  const manager = await insertStaff(
+    'product_manager',
+    'review-publication@example.invalid',
+  );
+  const managerAuth = `Bearer ${await tokenFor(manager)}`;
+  const product = await checkoutProduct('Review publication product');
+  const {
+    deliveries: [delivery],
+  } = await purchaseReviewItems(buyer, [product]);
+  await deliverReviewItem(managerAuth, delivery.id);
+  const orderItemId = String(delivery.orderItemId);
+  const { body: rating } = await submitReview(buyer, orderItemId, 4).expect(
+    201,
+  );
+
+  await sql(
+    "UPDATE public.reviews SET created_at = '2026-10-01T00:00:00Z' WHERE id = $1",
+    [rating.id],
+  );
+  await sql(
+    `INSERT INTO public.reviews
+       (product_id, user_id, rating, comment, comment_status, moderated_by, moderated_at, created_at)
+     SELECT reviews.product_id, reviews.user_id, 5, 'Earlier comment ' || series.n,
+       'approved', $2, now() - interval '1 day', now() - interval '2 days'
+     FROM public.reviews AS reviews CROSS JOIN generate_series(1, 20) AS series(n)
+     WHERE reviews.id = $1`,
+    [rating.id, manager],
+  );
+
+  const detail = async () =>
+    (await server().get(`/api/products/${product}`).expect(200)).body;
+  const text = 'This comment was added to an older rating.';
+  await submitReview(buyer, orderItemId, 4, text).expect(201);
+  const pending = await detail();
+  assert.equal(pending.comments.length, 20);
+  assert.ok(!pending.comments.some((comment) => comment.comment === text));
+
+  const decisions = await Promise.all([
+    moderateReview(managerAuth, rating.id, 'approved'),
+    moderateReview(managerAuth, rating.id, 'approved'),
+  ]);
+  assert.deepEqual(
+    decisions.map((response) => response.status).sort((a, b) => a - b),
+    [200, 409],
+  );
+  const published = await detail();
+  assert.equal(published.comments.length, 20);
+  assert.equal(published.comments[0].comment, text);
+  assert.equal(published.comments[0].createdAt, '2026-10-01T00:00:00.000Z');
+  assert.ok(
+    new Date(published.comments[0].publishedAt) >
+      new Date(published.comments[1].publishedAt),
+  );
 });

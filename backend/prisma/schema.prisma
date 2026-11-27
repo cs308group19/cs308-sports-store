@@ -432,6 +432,7 @@ model Review {
   moderator Profile?   @relation("ReviewModerator", fields: [moderatedBy], references: [id], onDelete: SetNull)
 
   @@index([productId], map: "reviews_product_id_idx")
+  @@index([userId], map: "reviews_user_id_idx")
   @@index([orderId], map: "reviews_order_id_idx")
   @@index([moderatedBy], map: "reviews_moderated_by_idx")
   @@index([commentStatus], map: "reviews_comment_status_idx")

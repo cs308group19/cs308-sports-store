@@ -68,7 +68,11 @@ describe('ProductDetailService', () => {
       commentStatus: 'approved',
       comment: { not: null },
     });
-    expect(reviews.orderBy).toEqual({ createdAt: 'desc' });
+    expect(reviews.orderBy).toEqual([
+      { moderatedAt: { sort: 'desc', nulls: 'last' } },
+      { createdAt: 'desc' },
+      { id: 'desc' },
+    ]);
     expect(reviews.take).toBe(DETAIL_COMMENT_LIMIT);
   });
 

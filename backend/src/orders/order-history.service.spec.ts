@@ -49,7 +49,10 @@ describe('OrderHistoryService', () => {
         select: { id: true },
         take: 1,
       },
-      review: { select: { rating: true, comment: true, commentStatus: true } },
+      review: {
+        where: { userId: 'user-1' },
+        select: { rating: true, comment: true, commentStatus: true },
+      },
     });
   });
 

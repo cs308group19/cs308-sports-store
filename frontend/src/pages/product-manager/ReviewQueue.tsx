@@ -62,12 +62,15 @@ export function ReviewQueue({ notify }: { notify: (message: string) => void }) {
 
   return (
     <DashboardShell eyebrow="Community quality" title="Review approval queue">
-      {actionError && <p role="alert">{actionError}</p>}
+      {actionError && queue.status !== "error" && <p role="alert">{actionError}</p>}
       {queue.status === "loading" && <p role="status">Loading comments…</p>}
       {queue.status === "error" && (
         <div className="empty">
           <p role="alert">{queue.message}</p>
-          <Button onClick={refresh}>Try again</Button>
+          <Button onClick={() => {
+            setActionError(null);
+            refresh();
+          }}>Try again</Button>
         </div>
       )}
       {queue.status === "ready" && (
@@ -78,7 +81,7 @@ export function ReviewQueue({ notify }: { notify: (message: string) => void }) {
             {queue.reviews.map((review) => (
               <article className="review-queue" key={review.id} aria-busy={saving === review.id}>
                 <div className="review-user">
-                  <span aria-hidden="true">{review.author[0]}</span>
+                  <span aria-hidden="true">{(review.author.trim()[0] ?? "?").toUpperCase()}</span>
                   <div>
                     <b>{review.author}</b>
                     <small>{review.productName}</small>

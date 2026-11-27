@@ -83,6 +83,7 @@ export default function App() {
 
   useEffect(() => {
     setCheckoutInvoice((invoice) => invoice?.customerId === user?.id ? invoice : null);
+    setReviewTarget((target) => target?.customerId === user?.id ? target : null);
   }, [user?.id]);
 
   const navigate = (next: View, invoice: CheckoutInvoice | null = null) => {
@@ -303,13 +304,31 @@ export default function App() {
             navigate("review");
           }}
         />
-      ) : null;
+      ) : (
+        <div className="page narrow">
+          <h1>My orders</h1>
+          <p>Order history is available to customer accounts.</p>
+        </div>
+      );
     if (view === "wishlist")
       return <Wishlist products={wishlist} openProduct={openProduct} addToCart={addToCart} />;
     if (view === "profile") return user ? <Profile user={user} navigate={navigate} /> : null;
     if (view === "review" && user?.role === "Customer" && reviewTarget?.customerId === user.id)
       return <ReviewForm key={reviewTarget.line.id} line={reviewTarget.line} notify={notify} backToOrders={() => navigate("orders")} />;
-    if (view === "review") return null;
+    if (view === "review")
+      return (
+        <div className="page narrow">
+          <h1>Product review</h1>
+          {user?.role === "Customer" ? (
+            <>
+              <p>Choose a delivered item from your orders to write a review.</p>
+              <Button onClick={() => navigate("orders")}>My orders</Button>
+            </>
+          ) : (
+            <p>Product reviews are available to customer accounts.</p>
+          )}
+        </div>
+      );
     if (view === "pm-products") return <ProductManagement notify={notify} />;
     if (view === "pm-deliveries") return <Deliveries notify={notify} />;
     if (view === "pm-invoices") return <Invoices notify={notify} manager="product" />;

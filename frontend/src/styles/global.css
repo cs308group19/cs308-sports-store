@@ -1480,13 +1480,6 @@ label textarea {
 .order-product-line small {
   color: var(--muted);
 }
-.order-product-line button {
-  border: 0;
-  background: transparent;
-  color: var(--orange);
-  font-size: 10px;
-  font-weight: 700;
-}
 .return-status {
   text-align: right;
 }

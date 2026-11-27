@@ -23,7 +23,10 @@ export interface OrderHistoryLine {
   unitPricePaid: number;
   lineTotal: number;
   delivered: boolean;
-  review: { rating: number; commentStatus: ReviewStatus | null } | null;
+  review: {
+    rating: number;
+    commentStatus: Exclude<ReviewStatus, 'not_applicable'> | null;
+  } | null;
 }
 
 /** One entry of GET /api/me/orders. */

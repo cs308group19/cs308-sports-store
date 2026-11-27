@@ -54,7 +54,10 @@ function toLine(item: OrderHistoryRecord['items'][number]): OrderHistoryLine {
       ? {
           rating: item.review.rating,
           commentStatus:
-            item.review.comment === null ? null : item.review.commentStatus,
+            item.review.comment === null ||
+            item.review.commentStatus === 'not_applicable'
+              ? null
+              : item.review.commentStatus,
         }
       : null,
   };
