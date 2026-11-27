@@ -89,17 +89,13 @@ export function Header({
     goToSection(id);
   };
 
-  const accountLinks: Array<[string, View]> = user
-    ? [
-        ["My profile", "profile"],
-        ["My orders", "orders"],
-        ["Wishlist", "wishlist"],
-      ]
-    : [
-        ["Sign in", "login"],
-        ["My orders", "orders"],
-        ["Wishlist", "wishlist"],
-      ];
+  // SCRUM-43. Guests see the account pages too; App sends them to login and back to the page.
+  const accountLinks: Array<[string, View]> = [
+    ...(user ? [] : ([["Sign in", "login"]] as Array<[string, View]>)),
+    ["My profile", "profile"],
+    ["My orders", "orders"],
+    ["Wishlist", "wishlist"],
+  ];
 
   return (
     <header ref={header} className={`header header--${variant}${customer ? column : ""}`}>

@@ -30,7 +30,8 @@ export function Footer({
         </div>
         <div>
           <b>Account</b>
-          <button onClick={() => navigate(signedIn ? "profile" : "login")}>{signedIn ? "Profile" : "Sign in"}</button>
+          {!signedIn && <button onClick={() => navigate("login")}>Sign in</button>}
+          <button onClick={() => navigate("profile")}>My profile</button>
           <button onClick={() => navigate("orders")}>My orders</button>
           <button onClick={() => navigate("wishlist")}>Wishlist</button>
           <button onClick={() => navigate("cart")}>Cart</button>
