@@ -17,6 +17,13 @@ export interface Env {
   SMTP_PASS?: string;
   /** The "From" of every email the store sends. */
   MAIL_FROM: string;
+  /** Rally, the shopping assistant. Without both of these its chat answers 503. Server only. */
+  GEMINI_API_KEY?: string;
+  GEMINI_MODEL?: string;
+  /** How a customer reaches a person: shown by Rally and the chat widget. */
+  SUPPORT_PHONE: string;
+  SUPPORT_EMAIL: string;
+  SUPPORT_HOURS: string;
 }
 
 function optional(raw: Record<string, unknown>, name: keyof Env) {
@@ -105,5 +112,10 @@ export function validateEnv(raw: Record<string, unknown>): Env {
     SMTP_PASS: smtpPass,
     MAIL_FROM:
       optional(raw, 'MAIL_FROM') ?? 'RALLY Sports <no-reply@rally.store>',
+    GEMINI_API_KEY: optional(raw, 'GEMINI_API_KEY'),
+    GEMINI_MODEL: optional(raw, 'GEMINI_MODEL'),
+    SUPPORT_PHONE: optional(raw, 'SUPPORT_PHONE') ?? '+90 000 000 00 00',
+    SUPPORT_EMAIL: optional(raw, 'SUPPORT_EMAIL') ?? 'support@rally.store',
+    SUPPORT_HOURS: optional(raw, 'SUPPORT_HOURS') ?? 'weekdays 09:00–18:00',
   };
 }
