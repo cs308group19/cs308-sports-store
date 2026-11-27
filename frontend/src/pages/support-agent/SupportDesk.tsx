@@ -149,8 +149,8 @@ export function SupportDesk({ notify }: { notify: (s: string) => void }) {
               <div className="mini-item">
                 <img src={products[2].image} alt="" />
                 <span>
-                  <b>Velocity Knit</b>
-                  <small>$99.00 · Qty 1</small>
+                  <b>{products[2].name}</b>
+                  <small>${products[2].price.toFixed(2)} · Qty 1</small>
                 </span>
               </div>
               <h4>PREVIOUS ORDERS</h4>

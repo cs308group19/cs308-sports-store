@@ -61,17 +61,17 @@ describe("orderApi", () => {
 
   describe("orderLineImage", () => {
     it("uses the uploaded product photo when there is one", () => {
-      expect(orderLineImage({ imageUrl: "/uploads/p.webp", model: "AS-PRO-25" })).toBe(
+      expect(orderLineImage({ imageUrl: "/uploads/p.webp", model: "NK-AM11-GRY" })).toBe(
         "/uploads/p.webp",
       );
     });
 
     it("falls back to the catalogue photo of the model for seeded products", () => {
-      expect(orderLineImage({ imageUrl: null, model: "AS-PRO-25" })).toBe(
-        "/catalogue/AS-PRO-25.webp",
+      expect(orderLineImage({ imageUrl: null, model: "NK-AM11-GRY" })).toBe(
+        "/catalogue/NK-AM11-GRY.webp",
       );
-      expect(orderLineImage({ imageUrl: "   ", model: "AS-PRO-25" })).toBe(
-        "/catalogue/AS-PRO-25.webp",
+      expect(orderLineImage({ imageUrl: "   ", model: "NK-AM11-GRY" })).toBe(
+        "/catalogue/NK-AM11-GRY.webp",
       );
     });
 
