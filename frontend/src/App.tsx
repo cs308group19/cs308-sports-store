@@ -102,19 +102,21 @@ export default function App() {
     if (next !== "review") setReviewTarget(null);
     // SCRUM-22/27/43. Guests log in before opening checkout, order history or their profile.
     if ((next === "checkout" || next === "orders" || next === "profile") && !user) {
-      setAuthOrigin(view);
+      setAuthOrigin((current) => (view === "login" ? current : view));
       setReturnTo(next);
       setView("login");
-      window.history.pushState({}, "", "/auth");
+      if (window.location.pathname !== "/auth") window.history.pushState({}, "", "/auth");
       setMobileOpen(false);
+      window.scrollTo({ top: 0, behavior: smooth ? "smooth" : "instant" });
       return;
     }
     if (staffViews.has(next) && (!user || user.role === "Customer")) {
-      setAuthOrigin(view);
+      setAuthOrigin((current) => (view === "login" ? current : view));
       setReturnTo(next);
       setView("login");
-      window.history.pushState({}, "", "/auth");
+      if (window.location.pathname !== "/auth") window.history.pushState({}, "", "/auth");
       setMobileOpen(false);
+      window.scrollTo({ top: 0, behavior: smooth ? "smooth" : "instant" });
       return;
     }
     if (next === "login") {
