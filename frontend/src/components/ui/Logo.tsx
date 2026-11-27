@@ -1,12 +1,20 @@
 import { useId } from "react";
 
-const RIBBON =
+export const RIBBON =
   "M30 60 C30 15, 95 15, 120 60 C145 105, 210 105, 210 60 C210 15, 145 15, 120 60 C95 105, 30 105, 30 60";
 /** Drawn again on top so the ribbon visibly crosses over itself in the middle. */
 const CROSSING =
   "M91.90 32.78 C102.86 38.33, 113.00 47.40, 120.00 60.00 C127.00 72.60, 137.14 81.67, 148.10 87.22";
 
-function Ribbon({ backdrop, ball }: { backdrop: string; ball: boolean }) {
+function Ribbon({
+  backdrop,
+  ball,
+  ballSeconds = 4.5,
+}: {
+  backdrop: string;
+  ball: boolean;
+  ballSeconds?: number;
+}) {
   const gradient = `loop-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const stroke = `url(#${gradient})`;
   return (
@@ -23,7 +31,7 @@ function Ribbon({ backdrop, ball }: { backdrop: string; ball: boolean }) {
       <path d={CROSSING} fill="none" stroke={stroke} strokeWidth="16" strokeLinecap="round" />
       {ball && (
         <circle className="logo-ball" r="8" fill="#ffffff">
-          <animateMotion dur="4.5s" repeatCount="indefinite" path={RIBBON} />
+          <animateMotion dur={`${ballSeconds}s`} repeatCount="indefinite" path={RIBBON} />
         </circle>
       )}
     </>
@@ -36,15 +44,17 @@ export function LoopMark({
   height,
   backdrop,
   ball = false,
+  ballSeconds,
 }: {
   width: number;
   height: number;
   backdrop: string;
   ball?: boolean;
+  ballSeconds?: number;
 }) {
   return (
     <svg width={width} height={height} viewBox="20 10 200 100" aria-hidden="true">
-      <Ribbon backdrop={backdrop} ball={ball} />
+      <Ribbon backdrop={backdrop} ball={ball} ballSeconds={ballSeconds} />
     </svg>
   );
 }

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { AssistantModule } from './assistant/assistant.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { createSupabaseJwks, JWKS } from './auth/jwks.js';
 import { RolesGuard } from './auth/roles.guard.js';
@@ -37,6 +38,7 @@ import { UsersModule } from './users/users.module.js';
     DeliveriesModule,
     OrderHistoryModule,
     ReviewsModule,
+    AssistantModule,
   ],
   controllers: [HealthController, StaffController],
   providers: [

@@ -6,5 +6,6 @@ import { OrderHistoryService } from './order-history.service.js';
 @Module({
   controllers: [OrderHistoryController],
   providers: [OrderHistoryService],
+  exports: [OrderHistoryService],
 })
 export class OrderHistoryModule {}

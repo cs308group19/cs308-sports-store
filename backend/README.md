@@ -7,6 +7,7 @@ NestJS API for the CS308 online store (Team 19). It verifies Supabase logins, en
 - **Auth and users only.** `POST /api/auth/register`, `GET /api/auth/me`, `GET /api/health`, plus three placeholder endpoints under `/api/staff/*` that show how roles are enforced.
 - **Invoices (SCRUM-25, SCRUM-26).** `GET /api/me/invoices/:id` returns the signed-in customer's invoice, built from the records saved at order time. `GET /api/me/invoices/:id/pdf` returns the same invoice as a PDF download. Another customer's invoice, or one that does not exist, answers `404`. After checkout commits, `InvoicesService.sendInvoiceEmail(invoiceId)` emails the PDF and records `email_status` (`sent` or `failed`) on the invoice; it never throws.
 - **Checkout (SCRUM-22, SCRUM-23, SCRUM-24).** `POST /api/me/checkout` accepts `deliveryRecipient`, `deliveryAddress`, `cardholderName`, `cardNumber`, `expiry` (`MM/YY`) and `cvv` as strings, plus `reviewedCart: { items: [{ productId, quantity, lineTotalCents }], totalCents }` from the checkout summary. The server uses its own prices and checks that the reviewed cart still matches. A signed-in customer receives `201 { orderId, orderNumber, invoiceId }` on approval, `402` on a decline or `409` for an empty or changed cart or insufficient stock. The simulated bank only approves `4242 4242 4242 4242`. Use fictional card details.
+- **Rally, the shopping assistant (SCRUM-113).** `POST /api/assistant/chat` answers one chat message with Google Gemini, using the shop's own data. See [Rally](#rally-the-shopping-assistant) below.
 - Login happens in the browser against Supabase Auth. The browser then sends the access token to this API as `Authorization: Bearer <token>`.
 
 ## How authentication works
@@ -36,6 +37,9 @@ npm run start:dev      # http://localhost:3000/api
 | `FIELD_ENCRYPTION_KEY` | `openssl rand -base64 32`. Share it with the team through a safe channel; if it is lost, stored tax IDs cannot be read |
 | `TRUST_PROXY` | Optional. Leave empty locally. When the API runs behind a reverse proxy or load balancer, set the number of proxy hops (usually `1`); otherwise every client shares the proxy's IP and one rate limit. `true` is refused because it would let clients fake their IP |
 | `SUPABASE_JWT_SECRET` | Optional, legacy only. See step 4 below |
+| `GEMINI_API_KEY` | Optional. A key from [Google AI Studio](https://aistudio.google.com/apikey) for Rally. Backend only: never in the frontend, never committed |
+| `GEMINI_MODEL` | Optional, but Rally needs it together with the key. A cheap "flash" model with function calling, for example `gemini-3.5-flash-lite`. No model name is built into the code and names change often, so check [Google's current model list](https://ai.google.dev/gemini-api/docs/models) |
+| `SUPPORT_PHONE`, `SUPPORT_EMAIL`, `SUPPORT_HOURS` | Optional. How a customer reaches a person; Rally and the chat widget show them. The defaults are placeholders (`+90 000 000 00 00`, `support@rally.store`, `weekdays 09:00–18:00`) |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Optional. Where the invoice email goes. The default is a local [Mailpit](https://mailpit.axllent.org) (`localhost:1025`, no login, read the mail at http://localhost:8025). For [Ethereal](https://ethereal.email) put its test account here. Set `SMTP_USER` and `SMTP_PASS` together or not at all. Never commit a real password |
 
 ### One-time Supabase dashboard settings
@@ -63,6 +67,21 @@ Only product managers can use them (customers, sales managers and support agents
 - In the same transaction the order gets the status of its least advanced delivery row. When its last row is delivered the order becomes `delivered` and `orders.delivered_at` is set.
 - The order row is locked (`SELECT ... FOR UPDATE`) at the start of the update, so two managers working on the same order take turns: one delivery cannot move twice, and an order whose two items are delivered at the same moment still ends up `delivered`. The delivery update is also conditional on the status that was read.
 - Checkout creates the rows: one delivery per order item, status `processing`.
+
+## Rally, the shopping assistant
+
+| Endpoint | What it does |
+|---|---|
+| `POST /api/assistant/chat` `{ "messages": [{ "role": "user", "content": "…" }] }` | Returns `{ reply, products, contact? }`. Open to guests; with a customer's `Authorization` header Rally can read that customer's own orders. |
+| `GET /api/assistant/contact` | `{ phone, email, hours }` for "Talk to a person". No AI involved. |
+
+- **Input:** 1 to 20 messages, `role` is `user` or `assistant`, each `content` 1 to 2000 characters after trimming, the last one from the user. Anything else is `400`; a body over 128 kB is `413`.
+- **Reply:** `products` holds up to 4 `{ id, name, brand, price, oldPrice?, stock, image, model }`: the products the tools returned *and* the reply names. `image` is the uploaded photo or `null`; the frontend then shows its catalogue photo for `model`. `contact` is present when the reply gives the support phone or email.
+- **Tools** (Gemini function calling, read only, at most 4 rounds per message): `search_products`, `get_product`, `my_orders` and `store_info`. They use the same services as the shop and order history pages. `my_orders` takes the customer from the session only and answers `signedIn: false` to guests and staff.
+- **Offline:** without `GEMINI_API_KEY` and `GEMINI_MODEL`, or when Gemini fails or takes more than 15 seconds for a call (30 for the whole reply), the answer is `503` with the contact details.
+- **Limit:** 20 messages a minute per signed-in user, or per IP address for guests (`429`), counted in memory. The general limit of 100 requests a minute per IP also applies.
+- **Privacy:** the server stores no conversation. Messages, and the tool results they lead to (for a signed-in customer: order numbers, dates, items, prices and status, but no name, email or address), are sent to Google to produce the reply. Google may use free-tier requests to improve its products, so type no personal data into a demo with a free key.
+- The instructions Rally follows are in `src/assistant/assistant.prompt.ts`.
 
 ## Demo accounts and roles
 
@@ -103,6 +122,7 @@ backend/
 │   ├── config/env.ts           validates the environment at startup
 │   ├── auth/                   JWT guard, roles guard, decorators, register/me endpoints
 │   ├── users/                  create account, set role (Supabase admin API + Prisma)
+│   ├── assistant/              Rally chat endpoint, Gemini client and tools (SCRUM-113)
 │   ├── staff/                  placeholder role-protected endpoints
 │   ├── invoices/               invoice endpoints, PDF (pdfkit) and email (nodemailer)
 │   ├── deliveries/             product manager delivery list and status updates (SCRUM-34)

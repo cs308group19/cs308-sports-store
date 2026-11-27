@@ -36,7 +36,8 @@ frontend/
     │                        demo account list shown on the login page
     ├── lib/                 supabase.ts (login/session client), api.ts (calls the backend)
     ├── components/
-    │   ├── layout/          Header, Footer, DashboardShell, SupportChat
+    │   ├── assistant/       Rally, the shopping assistant bubble and chat panel (SCRUM-113)
+│   ├── layout/          Header, Footer, DashboardShell
     │   └── ui/              Button, Icon, Stars, ProductCard, Tracker, Stat, SectionHead
     ├── pages/
     │   ├── auth/            Log in (all roles) and Sign up (customers)

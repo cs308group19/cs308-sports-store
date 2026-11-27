@@ -7,17 +7,16 @@ import { Reflector } from '@nestjs/core';
 import { errors, SignJWT } from 'jose';
 import { createTestJwt } from '../../test/helpers/jwt.js';
 import { makeProfile } from '../../test/helpers/profile.js';
-import {
-  fakeConfig,
-  TEST_SUPABASE_URL,
-} from '../../test/helpers/test-env.js';
-import { Public } from './decorators.js';
+import { fakeConfig, TEST_SUPABASE_URL } from '../../test/helpers/test-env.js';
+import { OptionalAuth, Public } from './decorators.js';
 import { SupabaseJwtGuard } from './supabase-jwt.guard.js';
 
 class Dummy {
   @Public()
   open() {}
   closed() {}
+  @OptionalAuth()
+  either() {}
 }
 
 const handlerOf = (name: keyof Dummy) =>
@@ -164,5 +163,40 @@ describe('SupabaseJwtGuard', () => {
     await expect(
       guard.canActivate(contextFor(req, handlerOf('closed'))),
     ).rejects.toThrow(/No profile/);
+  });
+
+  describe('on an @OptionalAuth route', () => {
+    const either = async (authorization?: string) => {
+      const req = request(authorization);
+      await expect(
+        guard.canActivate(contextFor(req, handlerOf('either'))),
+      ).resolves.toBe(true);
+      return req.user;
+    };
+
+    it('attaches the profile for a valid token', async () => {
+      const profile = makeProfile();
+      findUnique.mockResolvedValue(profile);
+      await expect(
+        either(`Bearer ${await jwt.sign({ sub: profile.id })}`),
+      ).resolves.toBe(profile);
+    });
+
+    it('treats no token or a bad one as a guest', async () => {
+      await expect(either()).resolves.toBeUndefined();
+      await expect(either('Bearer nonsense')).resolves.toBeUndefined();
+      findUnique.mockResolvedValue(null);
+      await expect(
+        either(`Bearer ${await jwt.sign()}`),
+      ).resolves.toBeUndefined();
+    });
+
+    it('still fails when the database does', async () => {
+      findUnique.mockRejectedValue(new Error('database down'));
+      const req = request(`Bearer ${await jwt.sign()}`);
+      await expect(
+        guard.canActivate(contextFor(req, handlerOf('either'))),
+      ).rejects.toThrow('database down');
+    });
   });
 });
